@@ -58,11 +58,49 @@ body {
     .navbar .container-fluid {
         padding-left: 4%;
         padding-right: 4%;
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    /* Mobile navbar restructure */
+    .navbar .container-fluid > div:first-child {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
     }
     
     .navbar-brand {
         font-size: 1.1rem;
-        margin-right: 1rem;
+        margin-right: 0;
+        flex-direction: column;
+        align-items: flex-start !important;
+        flex: 1;
+    }
+    
+    .navbar-brand span {
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Mobile: Move mode badge and about button to right side under title */
+    .mobile-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+    
+    .mode-badge {
+        margin-left: 0 !important;
+        font-size: 0.7rem !important;
+        padding: 2px 6px !important;
+    }
+    
+    .navbar-nav:last-child {
+        position: absolute;
+        top: 0.8rem;
+        right: 4%;
     }
     
     .navbar-brand i {
@@ -763,33 +801,77 @@ body {
 /* Toast Notifications */
 .toast {
     position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    opacity: 0;
+    transform: translateX(100%);
+    animation: slideInUp 0.3s ease forwards;
+}
+
+/* Success Toast */
+.toast.success {
+    position: fixed;
     bottom: 20px;
     right: 20px;
-    background-color: #28a745;
+    top: auto;
+    background: linear-gradient(135deg, #28a745, #20c997);
     color: white;
-    padding: 12px 20px;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: none;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
     z-index: 9999;
-    font-size: 14px;
-    max-width: 400px;
-    animation: slideInUp 0.3s ease-out, fadeOut 0.5s ease-in 4.5s forwards;
+    opacity: 0;
+    transform: translateY(100%);
+    animation: slideInUp 0.4s ease forwards;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toast.success i {
+    font-size: 1.2rem;
+}
+
+/* Mode Badge Fixes */
+.mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.mode-badge i {
+    font-size: 0.9rem;
+    margin: 0;
+    padding: 0;
 }
 
 @keyframes slideInUp {
     from {
-        transform: translateY(100%);
         opacity: 0;
+        transform: translateY(100%);
     }
     to {
-        transform: translateY(0);
         opacity: 1;
+        transform: translateY(0);
     }
 }
 
 @keyframes fadeOut {
     from {
         opacity: 1;
+        transform: translateY(0);
     }
     to {
         opacity: 0;

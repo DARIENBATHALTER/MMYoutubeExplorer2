@@ -1,5 +1,6 @@
 # Exclude user's local video files
 YouTube_Downloads/
+YouTube_Downloads.zip
 
 # Exclude system files
 .DS_Store

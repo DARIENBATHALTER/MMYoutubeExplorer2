@@ -1,18 +1,19 @@
 /**
- * VideoPlayer - Handles local video playback with YouTube fallback
+ * VideoPlayer - Handles both local video playback and YouTube embeds
  * Manages video loading, error handling, and player controls
- * Version: 2.0 (Fixed HEAD request issue)
+ * Version: 4.0 (YouTube + Local support via ModeManager)
  */
 class VideoPlayer {
-    constructor(videoElement, fallbackElement, directoryManager = null) {
+    constructor(videoElement, fallbackElement, modeManager = null) {
         this.videoElement = videoElement;
         this.fallbackElement = fallbackElement;
-        this.directoryManager = directoryManager;
+        this.modeManager = modeManager;
         this.currentVideo = null;
         this.isPlaying = false;
         this.videoContainer = videoElement.closest('.video-container');
         this.playOverlay = document.getElementById('videoPlayOverlay');
-        this.isHostedMode = directoryManager !== null;
+        this.youtubeIframe = null;
+        this.currentPlayerType = null; // 'local' or 'youtube'
         
         // Custom control elements
         this.customControls = document.getElementById('customControls');
@@ -24,7 +25,7 @@ class VideoPlayer {
         this.volumeSlider = document.getElementById('volumeSlider');
         this.fullscreenBtn = document.getElementById('fullscreenBtn');
         
-        console.log('🎥 VideoPlayer v3.1 initialized (Enhanced Seeking)');
+        console.log('🎥 VideoPlayer v4.0 initialized (YouTube + Local support)');
         this.setupEventListeners();
         this.setupCustomControls();
     }
@@ -74,7 +75,7 @@ class VideoPlayer {
                 if (this.videoElement.src) {
                     this.play();
                 }
-            });
+        });
         }
 
         // Network events
@@ -90,8 +91,6 @@ class VideoPlayer {
         this.videoElement.addEventListener('timeupdate', () => {
             this.updateProgress();
         });
-
-
 
         this.videoElement.addEventListener('loadedmetadata', () => {
             this.updateTimeDisplay();
@@ -230,7 +229,7 @@ class VideoPlayer {
     }
 
     /**
-     * Load and play a video
+     * Load video based on current mode (local or YouTube)
      */
     async loadVideo(videoData, dataManager) {
         try {
@@ -238,26 +237,31 @@ class VideoPlayer {
             this.hideError();
             this.showLoading(true);
 
-            // Get local video path
-            const localPath = dataManager.getVideoFilePath(videoData.video_id);
-            
             console.log(`🔍 DEBUG - Video ID: ${videoData.video_id}`);
             console.log(`🔍 DEBUG - Video Title: ${videoData.title}`);
-            console.log(`🔍 DEBUG - getVideoFilePath returned: ${localPath}`);
-            console.log(`🔍 DEBUG - dataManager.videoMapping keys:`, Object.keys(dataManager.videoMapping).length);
-            console.log(`🔍 DEBUG - Direct mapping lookup:`, dataManager.videoMapping[videoData.video_id]);
+            console.log(`🔍 DEBUG - Current Mode: ${this.modeManager?.getCurrentMode()}`);
             
-            if (localPath) {
-                console.log(`🎥 Attempting to load local video: ${localPath}`);
-                try {
-                    await this.loadLocalVideo(localPath, videoData);
-                } catch (error) {
-                    console.log(`🔗 Local video failed to load, showing YouTube fallback`);
-                    this.showYouTubeFallback(videoData, dataManager);
-                }
+            if (this.modeManager?.isYouTubeMode()) {
+                // YouTube mode - embed YouTube video
+                console.log('🔗 Loading YouTube embed for video:', videoData.title);
+                await this.loadYouTubeVideo(videoData);
             } else {
-                console.log(`🔗 No local video mapping found, showing YouTube fallback`);
+                // Local mode - try to load local video file
+                const localPath = dataManager.getVideoFilePath(videoData.video_id);
+                console.log(`🔍 DEBUG - getVideoFilePath returned: ${localPath}`);
+                
+                if (localPath) {
+                    console.log(`🎥 Attempting to load local video: ${localPath}`);
+                    try {
+                        await this.loadLocalVideo(localPath, videoData);
+                    } catch (error) {
+                        console.log(`🔗 Local video failed to load, showing YouTube fallback`);
+                        this.showYouTubeFallback(videoData, dataManager);
+                    }
+                } else {
+                    console.log(`🔗 No local video mapping found, showing YouTube fallback`);
                 this.showYouTubeFallback(videoData, dataManager);
+                }
             }
 
         } catch (error) {
@@ -267,11 +271,61 @@ class VideoPlayer {
     }
 
     /**
+     * Load YouTube video as iframe embed
+     */
+    async loadYouTubeVideo(videoData) {
+        return new Promise((resolve) => {
+            console.log(`🔗 Creating YouTube embed for: ${videoData.title}`);
+            
+            // Hide local video element and custom controls
+            this.videoElement.style.display = 'none';
+            this.hidePlayOverlay();
+            this.customControls.style.display = 'none';
+            
+            // Remove existing iframe if present
+            if (this.youtubeIframe) {
+                this.youtubeIframe.remove();
+            }
+            
+            // Create YouTube iframe
+            this.youtubeIframe = document.createElement('iframe');
+            this.youtubeIframe.src = `https://www.youtube.com/embed/${videoData.video_id}?enablejsapi=1&modestbranding=1&rel=0`;
+            this.youtubeIframe.className = 'youtube-embed';
+            this.youtubeIframe.style.cssText = `
+                width: 100%;
+                height: 100%;
+                border: none;
+                border-radius: 8px;
+            `;
+            this.youtubeIframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            this.youtubeIframe.allowFullscreen = true;
+            
+            // Insert iframe into video container
+            this.videoContainer.appendChild(this.youtubeIframe);
+            
+            this.currentPlayerType = 'youtube';
+            this.showLoading(false);
+            
+            console.log(`✅ YouTube embed loaded for: ${videoData.title}`);
+            resolve();
+        });
+    }
+
+    /**
      * Load local video file
      */
     async loadLocalVideo(filePath, videoData) {
         return new Promise(async (resolve, reject) => {
-            console.log(`🎬 VideoPlayer v3.1: Setting video source to: ${filePath}`);
+            console.log(`🎬 VideoPlayer v4.0: Setting video source to: ${filePath}`);
+            
+            // Show local video element and custom controls
+            this.videoElement.style.display = 'block';
+            this.customControls.style.display = 'block';
+            
+            // Hide any existing YouTube iframe
+            if (this.youtubeIframe) {
+                this.youtubeIframe.style.display = 'none';
+            }
             
             // Configure video element
             this.videoElement.preload = 'metadata';
@@ -279,20 +333,19 @@ class VideoPlayer {
             
             try {
                 // Set video source based on mode
-                if (this.isHostedMode && this.directoryManager) {
+                if (this.modeManager?.isLocalMode() && this.modeManager.directoryManager?.isDirectorySelected()) {
                     // Use File System Access API to get blob URL
-                    console.log('🌐 Using hosted mode - creating blob URL');
-                    const blobUrl = await this.directoryManager.getVideoBlob(filePath);
+                    console.log('🌐 Using File System Access API - creating blob URL');
+                    const blobUrl = await this.modeManager.getVideoSource(videoData.video_id, filePath);
                     this.videoElement.src = blobUrl;
                 } else {
                     // Use traditional local server approach
                     console.log('🖥️ Using local server mode');
-                    this.videoElement.src = filePath;
+            this.videoElement.src = filePath;
                 }
-                
-                // Set poster if available (could use YouTube thumbnail)
-                const thumbnailUrl = `https://img.youtube.com/vi/${videoData.video_id}/maxresdefault.jpg`;
-                this.videoElement.poster = thumbnailUrl;
+            
+            // Set poster if available (could use YouTube thumbnail)
+            this.setVideoPoster(videoData.video_id);
 
             } catch (blobError) {
                 console.error('🚨 Failed to create blob URL, falling back to direct path:', blobError);
@@ -304,7 +357,7 @@ class VideoPlayer {
                 this.videoElement.removeEventListener('canplay', handleCanPlay);
                 this.videoElement.removeEventListener('error', handleError);
                 this.videoElement.removeEventListener('loadstart', handleLoadStart);
-                console.error(`🚨 VideoPlayer v2.0: Timeout loading video: ${filePath}`);
+                console.error(`🚨 VideoPlayer v4.0: Timeout loading video: ${filePath}`);
                 reject(new Error('Video loading timeout'));
             }, 10000); // 10 second timeout
 
@@ -314,7 +367,8 @@ class VideoPlayer {
                 this.videoElement.removeEventListener('canplay', handleCanPlay);
                 this.videoElement.removeEventListener('error', handleError);
                 this.videoElement.removeEventListener('loadstart', handleLoadStart);
-                console.log(`✅ VideoPlayer v2.0: Video loaded successfully: ${filePath}`);
+                console.log(`✅ VideoPlayer v4.0: Video loaded successfully: ${filePath}`);
+                this.currentPlayerType = 'local';
                 this.showVideo();
                 resolve();
             };
@@ -325,14 +379,14 @@ class VideoPlayer {
                 this.videoElement.removeEventListener('canplay', handleCanPlay);
                 this.videoElement.removeEventListener('error', handleError);
                 this.videoElement.removeEventListener('loadstart', handleLoadStart);
-                console.error(`🚨 VideoPlayer v2.0: Video error for ${filePath}:`, e);
+                console.error(`🚨 VideoPlayer v4.0: Video error for ${filePath}:`, e);
                 console.error(`🚨 Error details - Type: ${e.type}, Target: ${e.target?.tagName}, Src: ${e.target?.src}`);
                 reject(new Error(`Failed to load video: ${e.type}`));
             };
 
             // Handle load start (shows we're getting data)
             const handleLoadStart = () => {
-                console.log(`🎯 VideoPlayer v2.0: Video load started: ${filePath}`);
+                console.log(`🎯 VideoPlayer v4.0: Video load started: ${filePath}`);
             };
 
             this.videoElement.addEventListener('canplay', handleCanPlay);
@@ -348,27 +402,13 @@ class VideoPlayer {
      * Show YouTube fallback when local video fails
      */
     showYouTubeFallback(videoData, dataManager) {
-        this.hideVideo();
-        this.showLoading(false);
+        console.log(`🔗 Local video failed, loading YouTube player as fallback for: ${videoData.title}`);
         
-        const youtubeUrl = dataManager.getYouTubeUrl(videoData.video_id);
-        const youtubeLinkElement = document.getElementById('openYouTubeLink');
+        // Hide the fallback message since we're showing the actual video
+        this.fallbackElement.style.display = 'none';
         
-        if (youtubeLinkElement) {
-            youtubeLinkElement.href = youtubeUrl;
-        }
-        
-        // Update the fallback message to be more informative
-        const alertElement = this.fallbackElement.querySelector('.alert');
-        if (alertElement) {
-            alertElement.innerHTML = `
-                <i class="bi bi-exclamation-triangle"></i>
-                Local video file not available. <a href="${youtubeUrl}" id="openYouTubeLink" target="_blank">Watch on YouTube</a>
-            `;
-        }
-        
-        this.fallbackElement.style.display = 'block';
-        console.log(`🔗 Showing YouTube fallback for video: ${videoData.title}`);
+        // Load the YouTube video directly instead of just showing a link
+        this.loadYouTubeVideo(videoData);
     }
 
     /**
@@ -635,8 +675,6 @@ class VideoPlayer {
                  document.mozFullScreenElement);
     }
 
-
-
     /**
      * Get video metadata
      */
@@ -767,6 +805,57 @@ class VideoPlayer {
         this.videoElement.src = '';
         this.videoElement.load();
         this.currentVideo = null;
+    }
+
+    /**
+     * Set video poster with fallback logic
+     */
+    async setVideoPoster(videoId) {
+        const thumbnailUrls = [
+            `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/default.jpg`
+        ];
+        
+        for (const url of thumbnailUrls) {
+            try {
+                const success = await this.testThumbnailUrl(url);
+                if (success) {
+                    this.videoElement.poster = url;
+                    console.log(`🎞️ Set video poster: ${url}`);
+                    return;
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+        
+        // If all fail, don't set a poster
+        console.log(`🎞️ No valid poster found for video: ${videoId}`);
+    }
+
+    /**
+     * Test if a thumbnail URL is valid
+     */
+    testThumbnailUrl(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            
+            img.onload = () => {
+                if (img.naturalWidth > 120 && img.naturalHeight > 90) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            };
+            
+            img.onerror = () => resolve(false);
+            
+            setTimeout(() => resolve(false), 2000);
+            
+            img.src = url;
+        });
     }
 }
 

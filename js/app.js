@@ -6,7 +6,7 @@ class ArchiveExplorer {
     constructor() {
         this.dataManager = new DataManager();
         this.exportService = new ExportService();
-        this.directoryManager = new DirectoryManager();
+        this.modeManager = new ModeManager();
         this.videoPlayer = null;
         
         // Application state
@@ -15,7 +15,6 @@ class ArchiveExplorer {
         this.currentFilters = {};
         this.currentPagination = { page: 1, limit: 24 };
         this.currentCommentPagination = { page: 1, limit: 50 };
-        this.isHostedMode = false; // True when using File System Access API
         
         // UI elements
         this.elements = {};
@@ -36,9 +35,9 @@ class ArchiveExplorer {
                 throw new Error('Loading screen elements not found. Please check HTML structure.');
             }
             
-            // Hide loading screen initially and show directory selection
+            // Hide loading screen initially and show mode selection
             this.elements.loadingScreen.style.display = 'none';
-            this.showDirectorySelection();
+            this.showModeSelection();
             
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
@@ -47,41 +46,78 @@ class ArchiveExplorer {
     }
 
     /**
-     * Show directory selection modal
+     * Show mode selection modal
      */
-    showDirectorySelection() {
+    showModeSelection() {
         const modal = document.getElementById('directorySelectionModal');
-        const apiSupported = document.getElementById('directoryApiSupported');
-        const apiNotSupported = document.getElementById('directoryApiNotSupported');
+        const modeSelection = document.getElementById('modeSelection');
+        const localArchiveSetup = document.getElementById('localArchiveSetup');
         
-        // Show modal
+        // Show modal and mode selection
         modal.style.display = 'flex';
+        modeSelection.style.display = 'block';
+        localArchiveSetup.style.display = 'none';
         
-        // Check File System Access API support
-        if (this.directoryManager.isSupported) {
-            apiSupported.style.display = 'block';
-            apiNotSupported.style.display = 'none';
-            this.isHostedMode = true;
-        } else {
-            apiSupported.style.display = 'none';
-            apiNotSupported.style.display = 'block';
-            this.isHostedMode = false;
-        }
-        
-        // Set up directory selection event listeners
-        this.setupDirectoryEventListeners();
+        // Set up mode selection event listeners
+        this.setupModeEventListeners();
     }
 
     /**
-     * Set up directory selection event listeners
+     * Set up event listeners for mode selection
      */
-    setupDirectoryEventListeners() {
+    setupModeEventListeners() {
+        const selectLocalArchiveBtn = document.getElementById('selectLocalArchiveBtn');
+        const selectYouTubeBtn = document.getElementById('selectYouTubeBtn');
+        const backToModeSelection = document.getElementById('backToModeSelection');
         const selectDirectoryBtn = document.getElementById('selectDirectoryBtn');
         const useLocalServerBtn = document.getElementById('useLocalServerBtn');
         const continueToAppBtn = document.getElementById('continueToAppBtn');
         const retryDirectoryBtn = document.getElementById('retryDirectoryBtn');
         
-        // File System Access API approach
+        // Make entire cards clickable
+        const localArchiveCard = document.getElementById('localArchiveCard');
+        const youtubeCard = document.getElementById('youtubeCard');
+        
+        // Local Archive Mode Selection (entire card clickable)
+        if (localArchiveCard) {
+            localArchiveCard.addEventListener('click', async (e) => {
+                // Prevent double-click if clicking on button
+                if (e.target.tagName === 'BUTTON') return;
+                await this.handleLocalArchiveModeSelection();
+            });
+        }
+        
+        if (selectLocalArchiveBtn) {
+            selectLocalArchiveBtn.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent card click
+                await this.handleLocalArchiveModeSelection();
+            });
+        }
+        
+        // YouTube Mode Selection (entire card clickable)
+        if (youtubeCard) {
+            youtubeCard.addEventListener('click', async (e) => {
+                // Prevent double-click if clicking on button
+                if (e.target.tagName === 'BUTTON') return;
+                await this.handleYouTubeModeSelection();
+            });
+        }
+        
+        if (selectYouTubeBtn) {
+            selectYouTubeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent card click
+                await this.handleYouTubeModeSelection();
+            });
+        }
+        
+        // Back to mode selection
+        if (backToModeSelection) {
+            backToModeSelection.addEventListener('click', () => {
+                this.showModeSelection();
+            });
+        }
+        
+        // Directory selection (for local archive mode)
         if (selectDirectoryBtn) {
             selectDirectoryBtn.addEventListener('click', async () => {
                 await this.handleDirectorySelection();
@@ -95,39 +131,39 @@ class ArchiveExplorer {
             });
         }
         
-        // Continue to app after successful directory selection
+        // Continue to app after successful setup
         if (continueToAppBtn) {
             continueToAppBtn.addEventListener('click', () => {
-                this.hideDirectorySelection();
+                this.hideModeSelection();
                 this.startApp();
             });
         }
         
-        // Retry directory selection
+        // Retry setup
         if (retryDirectoryBtn) {
             retryDirectoryBtn.addEventListener('click', () => {
                 this.hideDirectoryError();
-                this.showDirectorySelection();
+                this.showLocalArchiveSetup();
             });
         }
     }
 
     /**
-     * Handle directory selection using File System Access API
+     * Handle mode selection using File System Access API
      */
-    async handleDirectorySelection() {
+    async handleModeSelection() {
         try {
-            this.showDirectoryStatus('Requesting directory access...');
+            this.showModeStatus('Requesting mode access...');
             
-            // Request directory access
-            await this.directoryManager.requestDirectory();
+            // Request mode access
+            await this.modeManager.requestMode();
             
-            this.showDirectoryStatus('Scanning directory for videos...');
+            this.showModeStatus('Scanning mode for videos...');
             
-            // Scan directory for files (only video files, not metadata)
-            const scanResult = await this.directoryManager.scanDirectory();
+            // Scan mode for files (only video files, not metadata)
+            const scanResult = await this.modeManager.scanMode();
             
-            this.showDirectoryStatus('Loading video metadata from server...');
+            this.showModeStatus('Loading video metadata from server...');
             
             // Load video mapping from hosted data folder (not from user's directory)
             const response = await fetch('data/video-mapping.json');
@@ -137,18 +173,111 @@ class ArchiveExplorer {
             const videoMapping = await response.json();
             
             // Update UI with success
-            console.log(`📊 Directory scan results: ${scanResult.videoFiles.size} video files found`);
+            console.log(`📊 Mode scan results: ${scanResult.videoFiles.size} video files found`);
             
-            this.showDirectorySuccess(
-                this.directoryManager.getDirectoryName()
+            this.showModeSuccess(
+                this.modeManager.getModeName()
             );
             
             // Store the video mapping for later use
             this.videoMapping = videoMapping;
             
         } catch (error) {
+            console.error('Mode selection failed:', error);
+            this.showModeError(error.message);
+        }
+    }
+
+    /**
+     * Handle Local Archive mode selection
+     */
+    async handleLocalArchiveModeSelection() {
+        console.log('🎛️ User selected Local Archive mode');
+        this.modeManager.setMode('local');
+        
+        // Check if File System Access API is supported
+        if (this.modeManager.directoryManager.isSupported) {
+            // Immediately open directory selection dialog
+            await this.handleDirectorySelection();
+        } else {
+            // Show setup screen for local server fallback
+            this.showLocalArchiveSetup();
+        }
+    }
+
+    /**
+     * Handle YouTube mode selection
+     */
+    async handleYouTubeModeSelection() {
+        try {
+            console.log('🎛️ User selected YouTube mode');
+            
+            this.showModeStatus('Initializing YouTube mode...');
+            
+            // Initialize YouTube mode
+            const result = await this.modeManager.initializeYouTubeMode();
+            this.modeManager.setMode('youtube');
+            
+            // Show success toast and auto-close modal
+            this.showSuccessToast('YouTube mode activated successfully!');
+            
+            // Auto-close modal after brief delay
+            setTimeout(() => {
+                this.hideModeSelection();
+                this.startApp();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('YouTube mode initialization failed:', error);
+            this.showModeError(error.message);
+        }
+    }
+
+    /**
+     * Show local archive setup screen
+     */
+    showLocalArchiveSetup() {
+        const modeSelection = document.getElementById('modeSelection');
+        const localArchiveSetup = document.getElementById('localArchiveSetup');
+        const apiSupported = document.getElementById('directoryApiSupported');
+        const apiNotSupported = document.getElementById('directoryApiNotSupported');
+        
+        // Hide mode selection, show local archive setup
+        modeSelection.style.display = 'none';
+        localArchiveSetup.style.display = 'block';
+        
+        // Check File System Access API support
+        if (this.modeManager.directoryManager.isSupported) {
+            apiSupported.style.display = 'block';
+            apiNotSupported.style.display = 'none';
+        } else {
+            apiSupported.style.display = 'none';
+            apiNotSupported.style.display = 'block';
+        }
+    }
+
+    /**
+     * Handle directory selection using File System Access API
+     */
+    async handleDirectorySelection() {
+        try {
+            this.showModeStatus('Requesting directory access...');
+            
+            // Initialize local mode
+            const result = await this.modeManager.initializeLocalMode();
+            
+            // Show success toast and auto-close modal
+            this.showSuccessToast('Videos loaded successfully!');
+            
+            // Auto-close modal after brief delay
+            setTimeout(() => {
+                this.hideModeSelection();
+                this.startApp();
+            }, 1500);
+            
+        } catch (error) {
             console.error('Directory selection failed:', error);
-            this.showDirectoryError(error.message);
+            this.showModeError(error.message);
         }
     }
 
@@ -156,16 +285,16 @@ class ArchiveExplorer {
      * Handle local server mode (fallback)
      */
     handleLocalServerMode() {
-        // Set hosted mode to false
-        this.isHostedMode = false;
+        // Set mode to local (non-File System Access API)
+        this.modeManager.setMode('local');
         
         // Hide directory selection and start app normally
-        this.hideDirectorySelection();
+        this.hideModeSelection();
         this.startApp();
     }
 
     /**
-     * Start the main application after directory setup
+     * Start the main application after mode setup
      */
     async startApp() {
         try {
@@ -179,12 +308,12 @@ class ArchiveExplorer {
             
             this.updateLoadingProgress('Loading video data...', 30);
             
-            // Initialize data manager with appropriate mode
-            if (this.isHostedMode && this.videoMapping) {
+            // Initialize data manager based on current mode
+            if (this.modeManager.isLocalMode() && this.modeManager.directoryManager.isDirectorySelected()) {
                 // Use File System Access API data with server metadata
-                await this.dataManager.initializeFromHostedMapping(this.videoMapping);
+                await this.dataManager.initializeFromHostedMapping(this.modeManager.videoMapping);
             } else {
-                // Use traditional local server approach
+                // Use traditional local server approach or YouTube mode (both use same metadata)
                 await this.dataManager.initialize();
             }
             
@@ -196,11 +325,11 @@ class ArchiveExplorer {
             // Initialize export service
             this.exportService = new ExportService();
             
-            // Initialize video player with directory manager if in hosted mode
+            // Initialize video player with mode manager
             this.videoPlayer = new VideoPlayer(
                 document.getElementById('videoPlayer'),
                 document.getElementById('videoFallback'),
-                this.isHostedMode ? this.directoryManager : null
+                this.modeManager
             );
             
             this.updateLoadingProgress('Ready!', 100);
@@ -219,7 +348,7 @@ class ArchiveExplorer {
                 this.checkZipCapabilities();
             }, 1000);
             
-            console.log('🎉 Archive Explorer initialized successfully!');
+            console.log(`🎉 Archive Explorer initialized successfully in ${this.modeManager.getCurrentMode()} mode!`);
             
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
@@ -233,9 +362,9 @@ class ArchiveExplorer {
     }
 
     /**
-     * UI helper methods for directory selection
+     * UI helper methods for mode selection
      */
-    showDirectoryStatus(message) {
+    showModeStatus(message) {
         const statusDiv = document.getElementById('directoryStatus');
         const errorDiv = document.getElementById('directoryError');
         const apiMethods = document.querySelectorAll('.api-method');
@@ -258,16 +387,16 @@ class ArchiveExplorer {
         }
     }
 
-    showDirectorySuccess(directoryName) {
+    showModeSuccess(modeName) {
         const statusDiv = document.getElementById('directoryStatus');
         
         if (statusDiv) {
             statusDiv.innerHTML = `
                 <div class="alert alert-success">
                     <i class="bi bi-check-circle"></i>
-                    <strong>Directory loaded:</strong> ${directoryName}
+                    <strong>Mode loaded:</strong> ${modeName}
                     <br>
-                    <small>Video files successfully loaded</small>
+                    <small>Ready to explore videos</small>
                 </div>
                 <button id="continueToAppBtn" class="btn btn-success btn-lg">
                     <i class="bi bi-play-circle"></i> Continue to App
@@ -279,14 +408,14 @@ class ArchiveExplorer {
             const continueBtn = document.getElementById('continueToAppBtn');
             if (continueBtn) {
                 continueBtn.addEventListener('click', () => {
-                    this.hideDirectorySelection();
+                    this.hideModeSelection();
                     this.startApp();
                 });
             }
         }
     }
 
-    showDirectoryError(message) {
+    showModeError(message) {
         const errorDiv = document.getElementById('directoryError');
         const errorMessage = document.getElementById('errorMessage');
         const statusDiv = document.getElementById('directoryStatus');
@@ -296,12 +425,12 @@ class ArchiveExplorer {
         if (errorDiv) errorDiv.style.display = 'block';
     }
 
-    hideDirectoryError() {
+    hideModeError() {
         const errorDiv = document.getElementById('directoryError');
         if (errorDiv) errorDiv.style.display = 'none';
     }
 
-    hideDirectorySelection() {
+    hideModeSelection() {
         const modal = document.getElementById('directorySelectionModal');
         if (modal) modal.style.display = 'none';
     }
@@ -389,10 +518,13 @@ class ArchiveExplorer {
             // Header search (if elements exist)
             if (this.elements.searchInput) {
                 this.elements.searchInput.addEventListener('input', this.debounce(() => {
-                    this.handleSearch();
+                    // Only trigger live search when NOT in video detail view
+                    if (this.currentView !== 'video-detail') {
+                        this.handleSearch();
+                    }
                 }, 300));
 
-                // Enter key in search
+                // Enter key in search (works from any view)
                 this.elements.searchInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
                         this.handleSearch();
@@ -579,19 +711,55 @@ class ArchiveExplorer {
     }
 
     /**
-     * Create video card HTML
+     * Get reliable YouTube thumbnail with fallback logic
+     */
+    getYouTubeThumbnail(videoId) {
+        // Create img element to test thumbnail availability
+        const img = document.createElement('img');
+        
+        // Try maxresdefault first, fallback to hqdefault if it fails
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        
+        // Return a promise that resolves to a working thumbnail URL
+        return new Promise((resolve) => {
+            img.onload = () => {
+                // Check if it's a real thumbnail (maxresdefault has min dimensions)
+                if (img.naturalWidth > 120) {
+                    resolve(thumbnailUrl);
+                } else {
+                    // Fallback to hqdefault
+                    resolve(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+                }
+            };
+            
+            img.onerror = () => {
+                // Fallback to hqdefault
+                resolve(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+            };
+            
+            img.src = thumbnailUrl;
+        });
+    }
+
+    /**
+     * Create video card HTML with reliable thumbnails
      */
     createVideoCard(video) {
-        const thumbnail = `https://img.youtube.com/vi/${video.video_id}/maxresdefault.jpg`;
         const date = new Date(video.published_at).toLocaleDateString();
         const views = this.formatNumber(video.view_count);
         const comments = this.formatNumber(video.comment_count);
         
-        return `
+        // Use data attributes to handle thumbnail loading
+        const cardId = `video-card-${video.video_id}`;
+        
+        const cardHtml = `
             <div class="col-md-6 col-lg-4 col-xl-3">
-                <div class="card video-card" data-video-id="${video.video_id}">
+                <div class="card video-card" data-video-id="${video.video_id}" id="${cardId}">
                     <div class="video-thumbnail">
-                        <img src="${thumbnail}" class="card-img-top" alt="${video.title}" loading="lazy">
+                        <img class="card-img-top thumbnail-img" alt="${video.title}" loading="lazy" 
+                             data-video-id="${video.video_id}"
+                             src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkxvYWRpbmcuLi48L3RleHQ+PC9zdmc+"
+                             style="min-height: 180px; background-color: #f8f9fa;">
                     </div>
                     <div class="video-card-body card-body">
                         <h6 class="video-title">${this.escapeHTML(video.title)}</h6>
@@ -605,6 +773,70 @@ class ArchiveExplorer {
                 </div>
             </div>
         `;
+        
+        // Load thumbnail asynchronously after DOM insertion
+        setTimeout(() => this.loadVideoThumbnail(video.video_id), 0);
+        
+        return cardHtml;
+    }
+
+    /**
+     * Load thumbnail for a specific video with fallback logic
+     */
+    async loadVideoThumbnail(videoId) {
+        const img = document.querySelector(`[data-video-id="${videoId}"].thumbnail-img`);
+        if (!img) return;
+        
+        // List of thumbnail URLs to try in order of preference
+        const thumbnailUrls = [
+            `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            `https://img.youtube.com/vi/${videoId}/default.jpg`
+        ];
+        
+        for (const url of thumbnailUrls) {
+            try {
+                const success = await this.testThumbnailUrl(url);
+                if (success) {
+                    img.src = url;
+                    img.style.minHeight = 'auto';
+                    return;
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+        
+        // If all fail, show a placeholder
+        img.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTllY2VmIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIFRodW1ibmFpbDwvdGV4dD48L3N2Zz4=";
+        img.style.minHeight = '180px';
+    }
+
+    /**
+     * Test if a thumbnail URL is valid and available
+     */
+    testThumbnailUrl(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            
+            img.onload = () => {
+                // Check if it's a valid thumbnail (not a placeholder)
+                // YouTube placeholder images are typically 120x90
+                if (img.naturalWidth > 120 && img.naturalHeight > 90) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            };
+            
+            img.onerror = () => resolve(false);
+            
+            // Set a timeout to avoid hanging
+            setTimeout(() => resolve(false), 3000);
+            
+            img.src = url;
+        });
     }
 
     /**
@@ -620,6 +852,9 @@ class ArchiveExplorer {
 
             this.currentVideo = video;
             this.currentView = 'video-detail';
+            
+            // Scroll to top when showing video detail
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             
             // Update UI
             this.elements.videoGridView.style.display = 'none';
@@ -960,6 +1195,11 @@ class ArchiveExplorer {
      * Handle search input
      */
     async handleSearch() {
+        // If we're in video detail view, return to video grid first
+        if (this.currentView === 'video-detail') {
+            this.showVideoGrid();
+        }
+        
         this.currentPagination.page = 1;
         await this.loadVideoGrid();
     }
@@ -1136,14 +1376,48 @@ class ArchiveExplorer {
      * Show success message
      */
     showSuccess(message, duration = 3000) {
-        console.log('✅', message);
-        // You could implement a toast notification system here
+        // Remove any existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
+        
+        // Create toast element
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.textContent = message;
+        
+        // Add to page
         document.body.appendChild(toast);
+        
+        // Remove after duration
         setTimeout(() => {
-            toast.remove();
+            toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    /**
+     * Show success toast notification
+     */
+    showSuccessToast(message, duration = 3000) {
+        // Remove any existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
+        
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'toast success';
+        toast.innerHTML = `
+            <i class="bi bi-check-circle-fill"></i>
+            <span>${message}</span>
+        `;
+        
+        // Add to page
+        document.body.appendChild(toast);
+        
+        // Remove after duration
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+            setTimeout(() => toast.remove(), 300);
         }, duration);
     }
 

@@ -18,9 +18,9 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    max-width: 600px;
+    max-width: 800px;
     width: 90%;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow-y: auto;
     animation: slideUp 0.4s ease;
 }
@@ -181,11 +181,111 @@
     }
 }
 
+/* Mode Selection Styles */
+.welcome-logo {
+    text-align: center;
+}
+
+.mode-selection {
+    margin-bottom: 20px;
+}
+
+.mode-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.mode-card.clickable-card {
+    cursor: pointer;
+    user-select: none;
+}
+
+.mode-card.clickable-card:hover {
+    border-color: #007bff;
+    background: #ffffff;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.mode-card.clickable-card#youtubeCard:hover {
+    border-color: #dc3545;
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+}
+
+.mode-card:hover {
+    border-color: #007bff;
+    background: #ffffff;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.mode-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.mode-card h5 {
+    margin: 15px 0 10px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.mode-card p {
+    color: #6c757d;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.archive-setup {
+    animation: slideIn 0.3s ease;
+}
+
+.setup-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.setup-header h4 {
+    margin: 10px 0 5px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* YouTube Mode Button Styling */
+.directory-modal .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border: none;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.directory-modal .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .directory-modal-content {
         width: 95%;
         margin: 20px;
+        max-width: 90vw;
     }
     
     .directory-modal-header,
@@ -195,6 +295,15 @@
     
     .method-card {
         padding: 20px;
+    }
+    
+    .mode-card {
+        padding: 25px 15px;
+        margin-bottom: 15px;
+    }
+    
+    .mode-icon {
+        font-size: 2.5rem;
     }
     
     .directory-modal .btn-lg {
