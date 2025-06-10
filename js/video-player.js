@@ -1,0 +1,835 @@
+/**
+ * VideoPlayer - Handles local video playback with YouTube fallback
+ * Manages video loading, error handling, and player controls
+ * Version: 2.0 (Fixed HEAD request issue)
+ */
+class VideoPlayer {
+    constructor(videoElement, fallbackElement, directoryManager = null) {
+        this.videoElement = videoElement;
+        this.fallbackElement = fallbackElement;
+        this.directoryManager = directoryManager;
+        this.currentVideo = null;
+        this.isPlaying = false;
+        this.videoContainer = videoElement.closest('.video-container');
+        this.playOverlay = document.getElementById('videoPlayOverlay');
+        this.isHostedMode = directoryManager !== null;
+        
+        // Custom control elements
+        this.customControls = document.getElementById('customControls');
+        this.playPauseBtn = document.getElementById('playPauseBtn');
+        this.progressContainer = document.getElementById('progressContainer');
+        this.progressBar = document.getElementById('progressBar');
+        this.timeDisplay = document.getElementById('timeDisplay');
+        this.muteBtn = document.getElementById('muteBtn');
+        this.volumeSlider = document.getElementById('volumeSlider');
+        this.fullscreenBtn = document.getElementById('fullscreenBtn');
+        
+        console.log('🎥 VideoPlayer v3.1 initialized (Enhanced Seeking)');
+        this.setupEventListeners();
+        this.setupCustomControls();
+    }
+
+    /**
+     * Set up video player event listeners
+     */
+    setupEventListeners() {
+        // Video loading events
+        this.videoElement.addEventListener('loadstart', () => {
+            this.showLoading(true);
+        });
+
+        this.videoElement.addEventListener('canplay', () => {
+            this.showLoading(false);
+            this.hideError();
+        });
+
+        this.videoElement.addEventListener('error', (e) => {
+            console.warn('🎥 Video playback error:', e);
+            this.handleVideoError();
+        });
+
+        // Playback events
+        this.videoElement.addEventListener('play', () => {
+            this.isPlaying = true;
+            this.hidePlayOverlay();
+            this.updatePlayPauseIcon();
+            this.updateProgress();
+        });
+
+        this.videoElement.addEventListener('pause', () => {
+            this.isPlaying = false;
+            this.showPlayOverlay();
+            this.updatePlayPauseIcon();
+        });
+
+        this.videoElement.addEventListener('ended', () => {
+            this.isPlaying = false;
+            this.showPlayOverlay();
+            this.updatePlayPauseIcon();
+        });
+
+        // Play overlay click handler
+        if (this.playOverlay) {
+            this.playOverlay.addEventListener('click', () => {
+                if (this.videoElement.src) {
+                    this.play();
+                }
+            });
+        }
+
+        // Network events
+        this.videoElement.addEventListener('stalled', () => {
+            console.warn('🎥 Video playback stalled');
+        });
+
+        this.videoElement.addEventListener('waiting', () => {
+            console.warn('🎥 Video buffering...');
+        });
+
+        // Time updates for custom controls
+        this.videoElement.addEventListener('timeupdate', () => {
+            this.updateProgress();
+        });
+
+
+
+        this.videoElement.addEventListener('loadedmetadata', () => {
+            this.updateTimeDisplay();
+            console.log(`🎥 Video metadata loaded - Duration: ${this.videoElement.duration}s`);
+        });
+
+        this.videoElement.addEventListener('loadeddata', () => {
+            console.log(`🎥 Video data loaded - can now seek`);
+        });
+
+        this.videoElement.addEventListener('seeked', () => {
+            console.log(`🎥 Seek completed - Current time: ${this.videoElement.currentTime}s`);
+            this.updateProgress();
+        });
+
+        this.videoElement.addEventListener('seeking', () => {
+            console.log(`🎥 Seeking started - Target: ${this.videoElement.currentTime}s`);
+        });
+
+        this.videoElement.addEventListener('error', (e) => {
+            console.error(`🎥 Video error during playback:`, e);
+        });
+
+        // Debug: Monitor any unexpected currentTime changes
+        let lastTime = 0;
+        this.videoElement.addEventListener('timeupdate', () => {
+            if (Math.abs(this.videoElement.currentTime - lastTime) > 10) {
+                console.log(`🕐 Large time jump: ${lastTime}s → ${this.videoElement.currentTime}s`);
+            }
+            lastTime = this.videoElement.currentTime;
+        });
+    }
+
+    /**
+     * Set up custom video controls
+     */
+    setupCustomControls() {
+        // Play/Pause button
+        this.playPauseBtn?.addEventListener('click', () => {
+            this.togglePlay();
+        });
+
+        // Progress bar clicking
+        this.progressContainer?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const rect = this.progressContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+            const duration = this.videoElement.duration;
+            
+            console.log(`🎯 Progress click debug:`);
+            console.log(`  - Click X: ${e.clientX}, Rect left: ${rect.left}, Relative: ${clickX}`);
+            console.log(`  - Container width: ${rect.width}`);
+            console.log(`  - Calculated percentage: ${percentage * 100}%`);
+            console.log(`  - Video duration: ${duration}`);
+            
+            if (duration && !isNaN(duration) && duration > 0) {
+                const newTime = duration * percentage;
+                console.log(`  - Seeking to: ${newTime}s`);
+                console.log(`  - Video ready state: ${this.videoElement.readyState}`);
+                console.log(`  - Video current time before: ${this.videoElement.currentTime}s`);
+                console.log(`  - Video seekable ranges: ${this.videoElement.seekable.length}`);
+                
+                if (this.videoElement.readyState >= 2 && this.videoElement.seekable.length > 0) {
+                    try {
+                        // Check if the seek target is within seekable range
+                        const seekableStart = this.videoElement.seekable.start(0);
+                        const seekableEnd = this.videoElement.seekable.end(0);
+                        const clampedTime = Math.max(seekableStart, Math.min(seekableEnd, newTime));
+                        
+                        console.log(`  - Seekable range: ${seekableStart}s to ${seekableEnd}s`);
+                        console.log(`  - Clamped seek time: ${clampedTime}s`);
+                        
+                        // Pause video before seeking (some browsers require this)
+                        const wasPlaying = !this.videoElement.paused;
+                        if (wasPlaying) {
+                            this.videoElement.pause();
+                            console.log(`  - Video paused for seeking`);
+                        }
+                        
+                        // Try a more robust seek approach
+                        this.performSeek(clampedTime, wasPlaying);
+                        
+                    } catch (error) {
+                        console.error(`  - Seek failed:`, error);
+                    }
+                } else {
+                    console.log(`  - Video not ready for seeking (readyState: ${this.videoElement.readyState}, seekable: ${this.videoElement.seekable.length})`);
+                }
+                
+                // Force update after a small delay to ensure the seek completed
+                setTimeout(() => {
+                    console.log(`  - After timeout, current time: ${this.videoElement.currentTime}s`);
+                    this.updateProgress();
+                }, 200);
+            } else {
+                console.log(`  - Cannot seek: duration=${duration}`);
+            }
+        });
+
+        // Add mousedown/mousemove for dragging
+        let isDragging = false;
+        
+        this.progressContainer?.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            this.handleProgressDrag(e);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                this.handleProgressDrag(e);
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Volume controls
+        this.muteBtn?.addEventListener('click', () => {
+            this.toggleMute();
+        });
+
+        this.volumeSlider?.addEventListener('input', (e) => {
+            const volume = e.target.value / 100;
+            this.videoElement.volume = volume;
+            this.updateVolumeIcon();
+        });
+
+        // Fullscreen button
+        this.fullscreenBtn?.addEventListener('click', () => {
+            this.toggleFullscreen();
+        });
+    }
+
+    /**
+     * Load and play a video
+     */
+    async loadVideo(videoData, dataManager) {
+        try {
+            this.currentVideo = videoData;
+            this.hideError();
+            this.showLoading(true);
+
+            // Get local video path
+            const localPath = dataManager.getVideoFilePath(videoData.video_id);
+            
+            console.log(`🔍 DEBUG - Video ID: ${videoData.video_id}`);
+            console.log(`🔍 DEBUG - Video Title: ${videoData.title}`);
+            console.log(`🔍 DEBUG - getVideoFilePath returned: ${localPath}`);
+            console.log(`🔍 DEBUG - dataManager.videoMapping keys:`, Object.keys(dataManager.videoMapping).length);
+            console.log(`🔍 DEBUG - Direct mapping lookup:`, dataManager.videoMapping[videoData.video_id]);
+            
+            if (localPath) {
+                console.log(`🎥 Attempting to load local video: ${localPath}`);
+                try {
+                    await this.loadLocalVideo(localPath, videoData);
+                } catch (error) {
+                    console.log(`🔗 Local video failed to load, showing YouTube fallback`);
+                    this.showYouTubeFallback(videoData, dataManager);
+                }
+            } else {
+                console.log(`🔗 No local video mapping found, showing YouTube fallback`);
+                this.showYouTubeFallback(videoData, dataManager);
+            }
+
+        } catch (error) {
+            console.error('🎥 Failed to load video:', error);
+            this.showYouTubeFallback(videoData, dataManager);
+        }
+    }
+
+    /**
+     * Load local video file
+     */
+    async loadLocalVideo(filePath, videoData) {
+        return new Promise(async (resolve, reject) => {
+            console.log(`🎬 VideoPlayer v3.1: Setting video source to: ${filePath}`);
+            
+            // Configure video element
+            this.videoElement.preload = 'metadata';
+            this.videoElement.autoplay = false;
+            
+            try {
+                // Set video source based on mode
+                if (this.isHostedMode && this.directoryManager) {
+                    // Use File System Access API to get blob URL
+                    console.log('🌐 Using hosted mode - creating blob URL');
+                    const blobUrl = await this.directoryManager.getVideoBlob(filePath);
+                    this.videoElement.src = blobUrl;
+                } else {
+                    // Use traditional local server approach
+                    console.log('🖥️ Using local server mode');
+                    this.videoElement.src = filePath;
+                }
+                
+                // Set poster if available (could use YouTube thumbnail)
+                const thumbnailUrl = `https://img.youtube.com/vi/${videoData.video_id}/maxresdefault.jpg`;
+                this.videoElement.poster = thumbnailUrl;
+
+            } catch (blobError) {
+                console.error('🚨 Failed to create blob URL, falling back to direct path:', blobError);
+                this.videoElement.src = filePath;
+            }
+
+            // Add timeout for loading
+            const loadTimeout = setTimeout(() => {
+                this.videoElement.removeEventListener('canplay', handleCanPlay);
+                this.videoElement.removeEventListener('error', handleError);
+                this.videoElement.removeEventListener('loadstart', handleLoadStart);
+                console.error(`🚨 VideoPlayer v2.0: Timeout loading video: ${filePath}`);
+                reject(new Error('Video loading timeout'));
+            }, 10000); // 10 second timeout
+
+            // Handle successful load
+            const handleCanPlay = () => {
+                clearTimeout(loadTimeout);
+                this.videoElement.removeEventListener('canplay', handleCanPlay);
+                this.videoElement.removeEventListener('error', handleError);
+                this.videoElement.removeEventListener('loadstart', handleLoadStart);
+                console.log(`✅ VideoPlayer v2.0: Video loaded successfully: ${filePath}`);
+                this.showVideo();
+                resolve();
+            };
+
+            // Handle load error
+            const handleError = (e) => {
+                clearTimeout(loadTimeout);
+                this.videoElement.removeEventListener('canplay', handleCanPlay);
+                this.videoElement.removeEventListener('error', handleError);
+                this.videoElement.removeEventListener('loadstart', handleLoadStart);
+                console.error(`🚨 VideoPlayer v2.0: Video error for ${filePath}:`, e);
+                console.error(`🚨 Error details - Type: ${e.type}, Target: ${e.target?.tagName}, Src: ${e.target?.src}`);
+                reject(new Error(`Failed to load video: ${e.type}`));
+            };
+
+            // Handle load start (shows we're getting data)
+            const handleLoadStart = () => {
+                console.log(`🎯 VideoPlayer v2.0: Video load started: ${filePath}`);
+            };
+
+            this.videoElement.addEventListener('canplay', handleCanPlay);
+            this.videoElement.addEventListener('error', handleError);
+            this.videoElement.addEventListener('loadstart', handleLoadStart);
+
+            // Load the video
+            this.videoElement.load();
+        });
+    }
+
+    /**
+     * Show YouTube fallback when local video fails
+     */
+    showYouTubeFallback(videoData, dataManager) {
+        this.hideVideo();
+        this.showLoading(false);
+        
+        const youtubeUrl = dataManager.getYouTubeUrl(videoData.video_id);
+        const youtubeLinkElement = document.getElementById('openYouTubeLink');
+        
+        if (youtubeLinkElement) {
+            youtubeLinkElement.href = youtubeUrl;
+        }
+        
+        // Update the fallback message to be more informative
+        const alertElement = this.fallbackElement.querySelector('.alert');
+        if (alertElement) {
+            alertElement.innerHTML = `
+                <i class="bi bi-exclamation-triangle"></i>
+                Local video file not available. <a href="${youtubeUrl}" id="openYouTubeLink" target="_blank">Watch on YouTube</a>
+            `;
+        }
+        
+        this.fallbackElement.style.display = 'block';
+        console.log(`🔗 Showing YouTube fallback for video: ${videoData.title}`);
+    }
+
+    /**
+     * Handle video playback errors
+     */
+    handleVideoError() {
+        this.showLoading(false);
+        
+        if (this.currentVideo) {
+            console.warn(`🎥 Local video failed for ${this.currentVideo.video_id}, showing fallback`);
+            // You could implement retry logic here or immediately show YouTube fallback
+            this.showError('Video playback failed. Please try the YouTube link.');
+        }
+    }
+
+    /**
+     * Show video player
+     */
+    showVideo() {
+        this.videoElement.style.display = 'block';
+        this.fallbackElement.style.display = 'none';
+        this.showLoading(false);
+        this.showPlayOverlay(); // Show play button when video loads
+    }
+
+    /**
+     * Hide video player
+     */
+    hideVideo() {
+        this.videoElement.style.display = 'none';
+        this.hidePlayOverlay(); // Hide play button when video is hidden
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoading(show) {
+        if (show) {
+            this.videoElement.classList.add('video-loading');
+        } else {
+            this.videoElement.classList.remove('video-loading');
+        }
+    }
+
+    /**
+     * Show error message
+     */
+    showError(message) {
+        this.fallbackElement.style.display = 'block';
+        const alertElement = this.fallbackElement.querySelector('.alert');
+        if (alertElement) {
+            alertElement.innerHTML = `
+                <i class="bi bi-exclamation-triangle"></i>
+                ${message} <a href="#" id="openYouTubeLink" target="_blank">Watch on YouTube</a>
+            `;
+        }
+    }
+
+    /**
+     * Hide error message
+     */
+    hideError() {
+        this.fallbackElement.style.display = 'none';
+    }
+
+    /**
+     * Show play overlay button
+     */
+    showPlayOverlay() {
+        if (this.playOverlay) {
+            this.playOverlay.style.display = 'flex';
+        }
+        if (this.videoContainer) {
+            this.videoContainer.classList.remove('playing');
+        }
+    }
+
+    /**
+     * Hide play overlay button
+     */
+    hidePlayOverlay() {
+        if (this.playOverlay) {
+            this.playOverlay.style.display = 'none';
+        }
+        if (this.videoContainer) {
+            this.videoContainer.classList.add('playing');
+        }
+    }
+
+    /**
+     * Play video
+     */
+    play() {
+        if (this.videoElement.src) {
+            return this.videoElement.play();
+        }
+    }
+
+    /**
+     * Pause video
+     */
+    pause() {
+        this.videoElement.pause();
+    }
+
+    /**
+     * Toggle play/pause
+     */
+    togglePlay() {
+        if (this.isPlaying) {
+            this.pause();
+        } else {
+            this.play();
+        }
+    }
+
+    /**
+     * Set video time
+     */
+    setTime(seconds) {
+        this.videoElement.currentTime = seconds;
+    }
+
+    /**
+     * Perform a robust seek operation
+     */
+    performSeek(targetTime, wasPlaying) {
+        console.log(`🎯 Performing robust seek to: ${targetTime}s`);
+        
+        // Ensure video is in the right state
+        if (this.videoElement.readyState < 2) {
+            console.log(`❌ Video not ready for seeking (readyState: ${this.videoElement.readyState})`);
+            return;
+        }
+
+        return new Promise((resolve) => {
+            let seekAttempts = 0;
+            const maxAttempts = 3;
+            
+            const attemptSeek = () => {
+                seekAttempts++;
+                console.log(`  - Seek attempt ${seekAttempts}: setting currentTime to ${targetTime}s`);
+                
+                // Store the target for verification
+                const targetTimeToSet = targetTime;
+                
+                // Set the time
+                this.videoElement.currentTime = targetTimeToSet;
+                
+                // Check immediately if it was set correctly
+                setTimeout(() => {
+                    const actualTime = this.videoElement.currentTime;
+                    console.log(`  - After setting: target=${targetTimeToSet}s, actual=${actualTime}s`);
+                    
+                    // If the time wasn't set correctly and we haven't exhausted attempts
+                    if (Math.abs(actualTime - targetTimeToSet) > 1 && seekAttempts < maxAttempts) {
+                        console.log(`  - Seek didn't stick, retrying... (attempt ${seekAttempts + 1})`);
+                        setTimeout(attemptSeek, 100);
+                    } else {
+                        // Seek completed (or we've exhausted attempts)
+                        console.log(`  - Seek ${seekAttempts < maxAttempts ? 'completed' : 'failed'} at ${actualTime}s`);
+                        
+                        // Resume playback if it was playing
+                        if (wasPlaying) {
+                            console.log(`  - Resuming playback`);
+                            this.videoElement.play().catch(e => console.log('Play after seek failed:', e));
+                        }
+                        
+                        resolve(actualTime);
+                    }
+                }, 50);
+            };
+            
+            // Start the seek attempt
+            attemptSeek();
+        });
+    }
+
+    /**
+     * Get video duration
+     */
+    getDuration() {
+        return this.videoElement.duration || 0;
+    }
+
+    /**
+     * Get current time
+     */
+    getCurrentTime() {
+        return this.videoElement.currentTime || 0;
+    }
+
+    /**
+     * Set volume (0-1)
+     */
+    setVolume(volume) {
+        this.videoElement.volume = Math.max(0, Math.min(1, volume));
+    }
+
+    /**
+     * Get volume (0-1)
+     */
+    getVolume() {
+        return this.videoElement.volume;
+    }
+
+    /**
+     * Set muted state
+     */
+    setMuted(muted) {
+        this.videoElement.muted = muted;
+    }
+
+    /**
+     * Check if muted
+     */
+    isMuted() {
+        return this.videoElement.muted;
+    }
+
+    /**
+     * Enter fullscreen
+     */
+    enterFullscreen() {
+        if (this.videoElement.requestFullscreen) {
+            this.videoElement.requestFullscreen();
+        } else if (this.videoElement.webkitRequestFullscreen) {
+            this.videoElement.webkitRequestFullscreen();
+        } else if (this.videoElement.mozRequestFullScreen) {
+            this.videoElement.mozRequestFullScreen();
+        }
+    }
+
+    /**
+     * Exit fullscreen
+     */
+    exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        }
+    }
+
+    /**
+     * Toggle fullscreen
+     */
+    toggleFullscreen() {
+        if (this.isFullscreen()) {
+            this.exitFullscreen();
+        } else {
+            this.enterFullscreen();
+        }
+    }
+
+    /**
+     * Check if in fullscreen
+     */
+    isFullscreen() {
+        return !!(document.fullscreenElement || 
+                 document.webkitFullscreenElement || 
+                 document.mozFullScreenElement);
+    }
+
+
+
+    /**
+     * Get video metadata
+     */
+    getMetadata() {
+        return {
+            duration: this.getDuration(),
+            currentTime: this.getCurrentTime(),
+            volume: this.getVolume(),
+            muted: this.isMuted(),
+            paused: this.videoElement.paused,
+            ended: this.videoElement.ended,
+            readyState: this.videoElement.readyState,
+            videoWidth: this.videoElement.videoWidth,
+            videoHeight: this.videoElement.videoHeight
+        };
+    }
+
+    /**
+     * Update progress bar
+     */
+    updateProgress() {
+        if (this.videoElement.duration) {
+            const percentage = (this.videoElement.currentTime / this.videoElement.duration) * 100;
+            
+            if (this.progressBar) {
+                this.progressBar.style.width = `${percentage}%`;
+            }
+            this.updateTimeDisplay();
+        }
+    }
+
+    /**
+     * Update time display
+     */
+    updateTimeDisplay() {
+        if (this.timeDisplay) {
+            const current = this.formatTime(this.videoElement.currentTime || 0);
+            const duration = this.formatTime(this.videoElement.duration || 0);
+            this.timeDisplay.textContent = `${current} / ${duration}`;
+        }
+    }
+
+    /**
+     * Update play/pause icon
+     */
+    updatePlayPauseIcon() {
+        if (this.playPauseBtn) {
+            const icon = this.playPauseBtn.querySelector('i');
+            if (icon) {
+                icon.className = this.isPlaying ? 'fas fa-pause' : 'fas fa-play';
+            }
+        }
+    }
+
+    /**
+     * Update volume icon
+     */
+    updateVolumeIcon() {
+        if (this.muteBtn) {
+            const icon = this.muteBtn.querySelector('i');
+            if (icon) {
+                const volume = this.videoElement.volume;
+                if (this.videoElement.muted || volume === 0) {
+                    icon.className = 'fas fa-volume-mute';
+                } else if (volume < 0.5) {
+                    icon.className = 'fas fa-volume-down';
+                } else {
+                    icon.className = 'fas fa-volume-up';
+                }
+            }
+        }
+    }
+
+    /**
+     * Toggle mute
+     */
+    toggleMute() {
+        this.videoElement.muted = !this.videoElement.muted;
+        this.updateVolumeIcon();
+        if (this.volumeSlider) {
+            this.volumeSlider.value = this.videoElement.muted ? 0 : this.videoElement.volume * 100;
+        }
+    }
+
+    /**
+     * Handle progress bar dragging
+     */
+    handleProgressDrag(e) {
+        if (!this.progressContainer) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const rect = this.progressContainer.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+        const duration = this.videoElement.duration;
+        
+        console.log(`🎯 Drag: ${percentage * 100}% at ${clickX}px of ${rect.width}px`);
+        
+        if (duration && !isNaN(duration) && duration > 0) {
+            const newTime = duration * percentage;
+            this.videoElement.currentTime = newTime;
+            this.updateProgress(); // Force immediate visual update
+        }
+    }
+
+    /**
+     * Format time helper
+     */
+    formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    /**
+     * Clean up resources
+     */
+    destroy() {
+        this.pause();
+        this.videoElement.src = '';
+        this.videoElement.load();
+        this.currentVideo = null;
+    }
+}
+
+// Utility functions for video handling
+class VideoUtils {
+    /**
+     * Generate video thumbnail URL from YouTube
+     */
+    static getYouTubeThumbnail(videoId, quality = 'maxresdefault') {
+        // Available qualities: default, mqdefault, hqdefault, sddefault, maxresdefault
+        return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+    }
+
+    /**
+     * Extract video ID from YouTube URL
+     */
+    static extractVideoId(url) {
+        const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    }
+
+    /**
+     * Generate YouTube embed URL
+     */
+    static getYouTubeEmbedUrl(videoId, options = {}) {
+        const params = new URLSearchParams({
+            autoplay: options.autoplay ? '1' : '0',
+            mute: options.mute ? '1' : '0',
+            controls: options.controls !== false ? '1' : '0',
+            start: options.start || '0',
+            ...options.extraParams
+        });
+        
+        return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+    }
+
+    /**
+     * Check if browser supports video format
+     */
+    static canPlayFormat(format) {
+        const video = document.createElement('video');
+        return video.canPlayType(format) !== '';
+    }
+
+    /**
+     * Get supported video formats
+     */
+    static getSupportedFormats() {
+        const video = document.createElement('video');
+        const formats = {
+            mp4: video.canPlayType('video/mp4'),
+            webm: video.canPlayType('video/webm'),
+            ogg: video.canPlayType('video/ogg'),
+            mov: video.canPlayType('video/quicktime')
+        };
+        
+        return Object.entries(formats)
+            .filter(([format, support]) => support !== '')
+            .map(([format, support]) => ({ format, support }));
+    }
+}
+
+// Export for use in other modules
+window.VideoPlayer = VideoPlayer;
+window.VideoUtils = VideoUtils; 
