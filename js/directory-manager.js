@@ -106,12 +106,33 @@ class DirectoryManager {
      * Get video file as blob URL
      */
     async getVideoBlob(filePath) {
-        const fileHandle = this.videoFiles.get(filePath);
+        // Remove YouTube_Downloads/ prefix if present, since users select the YouTube_Downloads folder itself
+        let normalizedPath = filePath;
+        if (filePath.startsWith('YouTube_Downloads/')) {
+            normalizedPath = filePath.substring('YouTube_Downloads/'.length);
+        }
+        
+        console.log(`🔍 Looking for video file: "${filePath}" -> normalized: "${normalizedPath}"`);
+        
+        // Try normalized path first
+        let fileHandle = this.videoFiles.get(normalizedPath);
+        
+        // If not found, try original path (for backward compatibility)
         if (!fileHandle) {
-            throw new Error(`Video file not found: ${filePath}`);
+            fileHandle = this.videoFiles.get(filePath);
+        }
+        
+        if (!fileHandle) {
+            // Debug: Show available files
+            console.log('📁 Available video files in directory:');
+            for (const [path, handle] of this.videoFiles.entries()) {
+                console.log(`  - "${path}"`);
+            }
+            throw new Error(`Video file not found: ${filePath} (normalized: ${normalizedPath})`);
         }
 
         const file = await fileHandle.getFile();
+        console.log(`✅ Successfully loaded video file: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
         return URL.createObjectURL(file);
     }
 
