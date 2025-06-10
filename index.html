@@ -93,39 +93,81 @@
         </div>
     </div>
 
-    <!-- Directory Selection Modal -->
+    <!-- Welcome & Mode Selection Modal -->
     <div id="directorySelectionModal" class="directory-modal" style="display: none;">
         <div class="directory-modal-content">
             <div class="directory-modal-header">
-                <h4><i class="bi bi-folder"></i> Select Video Directory</h4>
-                <p class="text-muted">Choose the folder containing your downloaded YouTube videos</p>
+                <div class="welcome-logo">
+                    <i class="fas fa-play-circle text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="mt-3 mb-2">Welcome to the MM YouTube Archive Explorer</h3>
+                <p class="text-muted">Select a video source to begin:</p>
             </div>
             
             <div class="directory-modal-body">
-                <div id="directoryApiSupported" class="api-method" style="display: none;">
-                    <div class="method-card">
-                        <h5><i class="bi bi-folder-check text-success"></i> Browser File Access</h5>
-                        <p>Your browser supports direct folder access. Click below to select your video directory.</p>
-                        <button id="selectDirectoryBtn" class="btn btn-primary btn-lg">
-                            <i class="bi bi-folder-plus"></i> Select Video Folder
-                        </button>
+                <!-- Mode Selection -->
+                <div id="modeSelection" class="mode-selection">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="mode-card clickable-card" id="localArchiveCard">
+                                <div class="mode-icon">
+                                    <i class="bi bi-folder-fill text-primary"></i>
+                                </div>
+                                <h5>Local Archive</h5>
+                                <button id="selectLocalArchiveBtn" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-folder-plus"></i> Select Folder
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mode-card clickable-card" id="youtubeCard">
+                                <div class="mode-icon">
+                                    <i class="bi bi-youtube text-danger"></i>
+                                </div>
+                                <h5>YouTube</h5>
+                                <button id="selectYouTubeBtn" class="btn btn-danger btn-lg w-100">
+                                    <i class="bi bi-play-circle"></i> Begin
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div id="directoryApiNotSupported" class="api-method" style="display: none;">
-                    <div class="method-card">
-                        <h5><i class="bi bi-server text-warning"></i> Local Server Required</h5>
-                        <p>Your browser doesn't support direct file access. You'll need to run a local server:</p>
-                        <div class="server-instructions">
-                            <ol>
-                                <li>Open terminal in your video directory</li>
-                                <li>Run: <code>python -m http.server 8080</code></li>
-                                <li>Click "Use Local Server" below</li>
-                            </ol>
-                        </div>
-                        <button id="useLocalServerBtn" class="btn btn-warning btn-lg">
-                            <i class="bi bi-server"></i> Use Local Server (localhost:8080)
+                <!-- Local Archive Setup -->
+                <div id="localArchiveSetup" class="archive-setup" style="display: none;">
+                    <div class="setup-header">
+                        <button id="backToModeSelection" class="btn btn-link p-0 mb-3">
+                            <i class="bi bi-arrow-left"></i> Back to mode selection
                         </button>
+                        <h4><i class="bi bi-folder"></i> Set Up Local Archive</h4>
+                        <p class="text-muted">Choose your downloaded video directory</p>
+                    </div>
+                    
+                    <div id="directoryApiSupported" class="api-method" style="display: none;">
+                        <div class="method-card">
+                            <h5><i class="bi bi-folder-check text-success"></i> Browser File Access</h5>
+                            <p>Your browser supports direct folder access. Click below to select your video directory.</p>
+                            <button id="selectDirectoryBtn" class="btn btn-primary btn-lg">
+                                <i class="bi bi-folder-plus"></i> Select Video Folder
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="directoryApiNotSupported" class="api-method" style="display: none;">
+                        <div class="method-card">
+                            <h5><i class="bi bi-server text-warning"></i> Local Server Required</h5>
+                            <p>Your browser doesn't support direct file access. You'll need to run a local server:</p>
+                            <div class="server-instructions">
+                                <ol>
+                                    <li>Open terminal in your video directory</li>
+                                    <li>Run: <code>python -m http.server 8080</code></li>
+                                    <li>Click "Use Local Server" below</li>
+                                </ol>
+                            </div>
+                            <button id="useLocalServerBtn" class="btn btn-warning btn-lg">
+                                <i class="bi bi-server"></i> Use Local Server (localhost:8080)
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -161,17 +203,17 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <nav aria-label="breadcrumb">
                 <ol id="breadcrumb" class="breadcrumb mb-0">
-                    <li class="breadcrumb-item active">Videos</li>
-                </ol>
-            </nav>
-            
-            <!-- Stats Bar (Home View Only) -->
+                <li class="breadcrumb-item active">Videos</li>
+            </ol>
+        </nav>
+
+        <!-- Stats Bar (Home View Only) -->
             <div id="statsBar" class="stats-bar mb-0">
-                <span id="resultCount" class="badge bg-primary">0 videos</span>
+            <span id="resultCount" class="badge bg-primary">0 videos</span>
                 <span id="totalComments" class="badge bg-secondary">0 comments</span>
                 <button type="button" id="exportAllVideos" class="btn btn-success">
-                    <i class="bi bi-download"></i> Export All Video Comments
-                </button>
+                <i class="bi bi-download"></i> Export All Video Comments
+            </button>
             </div>
         </div>
 
@@ -382,6 +424,7 @@
     
     <!-- App Scripts -->
     <script src="js/directory-manager.js"></script>
+    <script src="js/mode-manager.js"></script>
     <script src="js/data-manager.js"></script>
     <script src="js/video-player.js"></script>
     <script src="js/export-service.js"></script>
