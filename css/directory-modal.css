@@ -1,3 +1,132 @@
+/* Password Modal */
+.password-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.5s ease;
+    transition: opacity 0.3s ease;
+}
+
+.password-modal-content {
+    background: white;
+    border-radius: 24px;
+    padding: 60px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.6s ease;
+    position: relative;
+}
+
+.password-logo-container {
+    margin-bottom: 30px;
+}
+
+.password-title {
+    color: #2c3e50;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: normal;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.password-subtitle {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin-bottom: 40px;
+    font-weight: 400;
+}
+
+.password-form {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.password-input {
+    width: 100%;
+    padding: 16px 60px 16px 20px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    color: #2c3e50;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    text-align: center;
+    letter-spacing: 2px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.password-input::placeholder {
+    color: #adb5bd;
+    letter-spacing: normal;
+}
+
+.password-input:focus {
+    outline: none;
+    background: white;
+    border-color: #ffc107;
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+}
+
+.password-submit {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    border: none;
+    color: #212529;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.password-submit:hover {
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+}
+
+.password-error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    margin-top: 15px;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.password-footer {
+    position: absolute;
+    bottom: -60px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #adb5bd;
+    font-size: 0.75rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* Directory Selection Modal */
 .directory-modal {
     position: fixed;
@@ -18,7 +147,7 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    max-width: 800px;
+    max-width: 1200px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
@@ -120,10 +249,11 @@
 
 /* Button Styling */
 .directory-modal .btn-lg {
-    padding: 12px 30px;
+    padding: 9px 22px;
     font-weight: 500;
     border-radius: 6px;
     transition: all 0.3s ease;
+    font-size: 1rem;
 }
 
 .directory-modal .btn-primary {
@@ -135,6 +265,17 @@
 .directory-modal .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+}
+
+.directory-modal .btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    border: none;
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+}
+
+.directory-modal .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
 }
 
 .directory-modal .btn-warning {
@@ -205,16 +346,28 @@
     user-select: none;
 }
 
-.mode-card.clickable-card:hover {
-    border-color: #007bff;
+.mode-card.clickable-card#localArchiveCard:hover {
+    border-color: #6c757d;
     background: #ffffff;
-    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.15);
     transform: translateY(-2px);
 }
 
 .mode-card.clickable-card#youtubeCard:hover {
     border-color: #dc3545;
     box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+}
+
+.mode-card.clickable-card#instagramCard:hover {
+    border-color: #dc2743;
+    background: #ffffff;
+    box-shadow: 0 8px 25px rgba(220, 39, 67, 0.2);
+    transform: translateY(-2px);
+}
+
+.mode-card.clickable-card#facebookCard:hover {
+    border-color: #1877F2;
+    box-shadow: 0 8px 25px rgba(24, 119, 242, 0.15);
 }
 
 .mode-card:hover {
@@ -278,6 +431,26 @@
 .directory-modal .btn-danger:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+/* Instagram Button Styling */
+.directory-modal #selectInstagramBtn {
+    box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3);
+}
+
+.directory-modal #selectInstagramBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 39, 67, 0.4);
+}
+
+/* Facebook Button Styling */
+.directory-modal #selectFacebookBtn {
+    box-shadow: 0 4px 15px rgba(24, 119, 242, 0.3);
+}
+
+.directory-modal #selectFacebookBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
 }
 
 /* Responsive Design */

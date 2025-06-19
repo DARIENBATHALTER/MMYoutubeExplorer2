@@ -35,14 +35,70 @@ class ArchiveExplorer {
                 throw new Error('Loading screen elements not found. Please check HTML structure.');
             }
             
-            // Hide loading screen initially and show mode selection
+            // Hide loading screen initially
             this.elements.loadingScreen.style.display = 'none';
-            this.showModeSelection();
+            
+            // Grey out navbar initially
+            const navbar = document.querySelector('.navbar');
+            if (navbar) {
+                navbar.classList.add('hidden');
+            }
+            
+            // Set up password verification
+            this.setupPasswordVerification();
             
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
             this.showError('Failed to load the archive. Please refresh the page.');
         }
+    }
+
+    /**
+     * Set up password verification
+     */
+    setupPasswordVerification() {
+        const passwordForm = document.getElementById('passwordForm');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordError = document.getElementById('passwordError');
+        const passwordModal = document.getElementById('passwordModal');
+        
+        // Handle password form submission
+        passwordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const password = passwordInput.value;
+            const correctPassword = 'mmwelcome';
+            
+            if (password === correctPassword) {
+                // Hide password modal with fade out
+                passwordModal.style.opacity = '0';
+                setTimeout(() => {
+                    passwordModal.style.display = 'none';
+                    
+                    // Show navbar
+                    const navbar = document.querySelector('.navbar');
+                    if (navbar) {
+                        navbar.classList.remove('hidden');
+                    }
+                    
+                    // Show mode selection after password is correct
+                    this.showModeSelection();
+                }, 300);
+            } else {
+                // Show error message
+                passwordError.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+                
+                // Hide error after 3 seconds
+                setTimeout(() => {
+                    passwordError.style.display = 'none';
+                }, 3000);
+            }
+        });
+        
+        // Focus on password input
+        passwordInput.focus();
     }
 
     /**
@@ -68,6 +124,8 @@ class ArchiveExplorer {
     setupModeEventListeners() {
         const selectLocalArchiveBtn = document.getElementById('selectLocalArchiveBtn');
         const selectYouTubeBtn = document.getElementById('selectYouTubeBtn');
+        const selectInstagramBtn = document.getElementById('selectInstagramBtn');
+        const selectFacebookBtn = document.getElementById('selectFacebookBtn');
         const backToModeSelection = document.getElementById('backToModeSelection');
         const selectDirectoryBtn = document.getElementById('selectDirectoryBtn');
         const useLocalServerBtn = document.getElementById('useLocalServerBtn');
@@ -77,6 +135,8 @@ class ArchiveExplorer {
         // Make entire cards clickable
         const localArchiveCard = document.getElementById('localArchiveCard');
         const youtubeCard = document.getElementById('youtubeCard');
+        const instagramCard = document.getElementById('instagramCard');
+        const facebookCard = document.getElementById('facebookCard');
         
         // Local Archive Mode Selection (entire card clickable)
         if (localArchiveCard) {
@@ -107,6 +167,38 @@ class ArchiveExplorer {
             selectYouTubeBtn.addEventListener('click', async (e) => {
                 e.stopPropagation(); // Prevent card click
                 await this.handleYouTubeModeSelection();
+            });
+        }
+        
+        // Instagram Mode Selection (entire card clickable)
+        if (instagramCard) {
+            instagramCard.addEventListener('click', (e) => {
+                // Prevent double-click if clicking on button
+                if (e.target.tagName === 'BUTTON') return;
+                this.handleInstagramModeSelection();
+            });
+        }
+        
+        if (selectInstagramBtn) {
+            selectInstagramBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click
+                this.handleInstagramModeSelection();
+            });
+        }
+        
+        // Facebook Mode Selection (entire card clickable)
+        if (facebookCard) {
+            facebookCard.addEventListener('click', (e) => {
+                // Prevent double-click if clicking on button
+                if (e.target.tagName === 'BUTTON') return;
+                this.handleFacebookModeSelection();
+            });
+        }
+        
+        if (selectFacebookBtn) {
+            selectFacebookBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click
+                this.handleFacebookModeSelection();
             });
         }
         
@@ -231,6 +323,22 @@ class ArchiveExplorer {
             console.error('YouTube mode initialization failed:', error);
             this.showModeError(error.message);
         }
+    }
+
+    /**
+     * Handle Instagram mode selection
+     */
+    handleInstagramModeSelection() {
+        console.log('🎛️ User selected Instagram mode');
+        window.location.href = './othersocials/MMInstaArchive/MMArchiveExplorer/index.html';
+    }
+
+    /**
+     * Handle Facebook mode selection
+     */
+    handleFacebookModeSelection() {
+        console.log('🎛️ User selected Facebook mode');
+        window.location.href = './othersocials/MMFacebookExplorer/index.html';
     }
 
     /**
@@ -515,6 +623,15 @@ class ArchiveExplorer {
      */
     setupEventListeners() {
         try {
+            // Globe icon to return to welcome screen
+            const homeGlobe = document.getElementById('home-globe');
+            if (homeGlobe) {
+                homeGlobe.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showModeSelection();
+                });
+            }
+
             // Header search (if elements exist)
             if (this.elements.searchInput) {
                 this.elements.searchInput.addEventListener('input', this.debounce(() => {
