@@ -42,7 +42,7 @@
                 <a href="#" id="home-globe" style="cursor: pointer; text-decoration: none; margin-right: 12px;" title="Return to Welcome Screen" onclick="goToWelcomeScreen(event)">
                     <i class="fas fa-house" style="color: white; font-size: 1.2rem;"></i>
                 </a>
-                <div id="homeButton" style="display: flex; align-items: center;">
+                <div id="homeButton" style="display: flex; align-items: center; cursor: pointer;" onclick="goToMainView()">
                     <i class="fab fa-instagram" style="background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 2rem; margin-right: 12px;"></i>
                     <h1>MM Instagram Archive Explorer</h1>
                 </div>
@@ -66,6 +66,31 @@
             <button class="help-button" id="about-btn" data-bs-toggle="modal" data-bs-target="#aboutModal" title="About">
                 <i class="fas fa-question"></i>
             </button>
+        </div>
+    </div>
+
+    <!-- App Drawer Sidebar -->
+    <div class="app-drawer" id="appDrawer">
+        <button class="app-drawer-toggle" id="drawerToggle">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <div class="app-drawer-content">
+            <div class="app-drawer-apps">
+                <a href="../../../index.html" class="app-drawer-icon" title="YouTube Explorer" onclick="sessionStorage.setItem('bypassWelcome', 'true')">
+                    <i class="bi bi-youtube" style="color: #ff0000;"></i>
+                </a>
+                <a href="#" class="app-drawer-icon active" onclick="goToMainView()" title="Instagram Explorer">
+                    <i class="fab fa-instagram" style="background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
+                </a>
+                <a href="../../MMFacebookExplorer/index.html" class="app-drawer-icon" title="Facebook Explorer">
+                    <i class="bi bi-facebook" style="color: #1877F2;"></i>
+                </a>
+            </div>
+            <div class="app-drawer-footer">
+                <button class="logout-icon" onclick="logoutUser()" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -615,6 +640,80 @@
             // Navigate to root
             window.location.href = '../../../index.html';
         }
+
+        // Function to go to main view when logo/title is clicked
+        function goToMainView() {
+            if (window.app && window.app.currentView === 'post-detail') {
+                window.app.showPostGrid();
+            }
+            // If already on main view, scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Cookie helper functions
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function removeLoginCookie() {
+            document.cookie = 'mmarchive_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+        }
+
+        // Global logout function
+        function logoutUser() {
+            removeLoginCookie();
+            sessionStorage.clear();
+            // Show login modal instead of reloading
+            const passwordModal = document.getElementById('passwordModal');
+            const navbar = document.querySelector('.titlebar');
+            const app = document.getElementById('app');
+            
+            if (passwordModal) passwordModal.style.display = 'flex';
+            if (navbar) navbar.style.display = 'none';
+            if (app) app.style.display = 'none';
+            
+            // Reset password input
+            const passwordInput = document.getElementById('passwordInput');
+            if (passwordInput) passwordInput.value = '';
+        }
+
+        // App drawer functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const drawerToggle = document.getElementById('drawerToggle');
+            const appDrawer = document.getElementById('appDrawer');
+            
+            if (drawerToggle && appDrawer) {
+                drawerToggle.addEventListener('click', function() {
+                    const isOpen = appDrawer.classList.contains('open');
+                    if (isOpen) {
+                        appDrawer.classList.remove('open');
+                        document.body.classList.remove('drawer-open');
+                        drawerToggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                    } else {
+                        appDrawer.classList.add('open');
+                        document.body.classList.add('drawer-open');
+                        drawerToggle.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                    }
+                });
+            }
+
+            // Add sessionStorage flag for app drawer navigation links
+            const drawerLinks = document.querySelectorAll('.app-drawer-icon[href]');
+            drawerLinks.forEach(link => {
+                if (link.getAttribute('href') !== '#') {
+                    link.addEventListener('click', function(e) {
+                        sessionStorage.setItem('bypassLogin', 'true');
+                    });
+                }
+            });
+        });
     </script>
     
     <!-- App Scripts -->

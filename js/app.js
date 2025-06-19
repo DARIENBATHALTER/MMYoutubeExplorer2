@@ -63,6 +63,23 @@ class ArchiveExplorer {
                 return;
             }
             
+            // Check if we should bypass both login and welcome screens (from sidebar navigation)
+            if (sessionStorage.getItem('bypassWelcome') === 'true') {
+                // Clear the flag
+                sessionStorage.removeItem('bypassWelcome');
+                
+                // Show navbar
+                if (navbar) {
+                    navbar.classList.remove('hidden');
+                }
+                
+                // Go directly to main YouTube app (bypass welcome screen)
+                this.setupEventListeners();
+                this.loadData();
+                
+                return;
+            }
+            
             // Set up password verification
             this.setupPasswordVerification();
             
@@ -76,6 +93,71 @@ class ArchiveExplorer {
     }
 
     /**
+     * Check if user is already logged in via cookie
+     */
+    checkExistingLogin() {
+        const loginCookie = this.getCookie('mmarchive_logged_in');
+        return loginCookie === 'true';
+    }
+
+    /**
+     * Set login cookie
+     */
+    setLoginCookie() {
+        const expiryDate = new Date();
+        expiryDate.setTime(expiryDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        document.cookie = `mmarchive_logged_in=true; expires=${expiryDate.toUTCString()}; path=/`;
+    }
+
+    /**
+     * Remove login cookie
+     */
+    removeLoginCookie() {
+        document.cookie = 'mmarchive_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    }
+
+    /**
+     * Get cookie value
+     */
+    getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    /**
+     * Handle successful login
+     */
+    handleSuccessfulLogin() {
+        // Set login cookie
+        this.setLoginCookie();
+        
+        // Show navbar
+        const navbar = document.querySelector('.navbar');
+        if (navbar) {
+            navbar.classList.remove('hidden');
+        }
+        
+        // Fade out only the password modal content, keeping background
+        const passwordModal = document.getElementById('passwordModal');
+        const passwordContent = passwordModal.querySelector('.password-modal-content');
+        if (passwordContent) {
+            passwordContent.style.transition = 'opacity 0.5s ease-out';
+            passwordContent.style.opacity = '0';
+        }
+        
+        setTimeout(() => {
+            // Show mode selection after fade completes
+            this.showModeSelection();
+        }, 500);
+    }
+
+    /**
      * Set up password verification
      */
     setupPasswordVerification() {
@@ -83,6 +165,12 @@ class ArchiveExplorer {
         const passwordInput = document.getElementById('passwordInput');
         const passwordError = document.getElementById('passwordError');
         const passwordModal = document.getElementById('passwordModal');
+
+        // Check if already logged in and not bypassing welcome
+        if (this.checkExistingLogin() && sessionStorage.getItem('bypassWelcome') !== 'true') {
+            this.handleSuccessfulLogin();
+            return;
+        }
         
         // Handle password form submission
         passwordForm.addEventListener('submit', (e) => {
@@ -104,23 +192,7 @@ class ArchiveExplorer {
             // Simulate brief loading period
             setTimeout(() => {
                 if (password === correctPassword) {
-                    // Show navbar
-                    const navbar = document.querySelector('.navbar');
-                    if (navbar) {
-                        navbar.classList.remove('hidden');
-                    }
-                    
-                    // Fade out only the password modal content, keeping background
-                    const passwordContent = passwordModal.querySelector('.password-modal-content');
-                    if (passwordContent) {
-                        passwordContent.style.transition = 'opacity 0.5s ease-out';
-                        passwordContent.style.opacity = '0';
-                    }
-                    
-                    setTimeout(() => {
-                        // Show mode selection after fade completes
-                        this.showModeSelection();
-                    }, 500);
+                    this.handleSuccessfulLogin();
                 } else {
                     // Reset button state
                     submitBtn.disabled = false;
@@ -896,12 +968,42 @@ class ArchiveExplorer {
                     }
                 });
             }
+
+            // App drawer handling
+            const drawerToggle = document.getElementById('drawerToggle');
+            const appDrawer = document.getElementById('appDrawer');
+
+            if (drawerToggle && appDrawer) {
+                drawerToggle.addEventListener('click', () => {
+                    const isOpen = appDrawer.classList.contains('open');
+                    if (isOpen) {
+                        appDrawer.classList.remove('open');
+                        document.body.classList.remove('drawer-open');
+                        drawerToggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                    } else {
+                        appDrawer.classList.add('open');
+                        document.body.classList.add('drawer-open');
+                        drawerToggle.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                    }
+                });
+            }
             
             console.log('✅ Event listeners set up successfully');
             
         } catch (error) {
             console.error('❌ Error setting up event listeners:', error);
         }
+    }
+
+    /**
+     * Navigate to main view when logo/title is clicked
+     */
+    goToMainView() {
+        if (this.currentView === 'video-detail') {
+            this.showVideoGrid();
+        }
+        // If already on main view, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     /**
@@ -2082,6 +2184,43 @@ class ArchiveExplorer {
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new ArchiveExplorer();
 });
+
+// Global function for logo/title clicks
+function goToMainView() {
+    if (window.app) {
+        window.app.goToMainView();
+    }
+}
+
+// Global function for local archive setup
+function showLocalArchiveSetup() {
+    if (window.app) {
+        window.app.showModeSelection();
+        setTimeout(() => {
+            document.getElementById('selectLocalArchiveBtn')?.click();
+        }, 100);
+    }
+}
+
+// Global function for logout
+function logoutUser() {
+    if (window.app) {
+        window.app.removeLoginCookie();
+        sessionStorage.clear();
+        // Show login modal instead of reloading
+        const passwordModal = document.getElementById('passwordModal');
+        const navbar = document.querySelector('.navbar');
+        const app = document.getElementById('app');
+        
+        if (passwordModal) passwordModal.style.display = 'flex';
+        if (navbar) navbar.classList.add('hidden');
+        if (app) app.style.display = 'none';
+        
+        // Reset password input
+        const passwordInput = document.getElementById('passwordInput');
+        if (passwordInput) passwordInput.value = '';
+    }
+}
 
 // Export for use in other modules
 window.ArchiveExplorer = ArchiveExplorer; 
