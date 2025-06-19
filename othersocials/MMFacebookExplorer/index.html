@@ -1088,7 +1088,7 @@
     <div class="titlebar">
         <div class="titlebar-content">
             <div class="titlebar-left">
-                <a href="../../index.html" id="home-globe" style="cursor: pointer; text-decoration: none; margin-right: 12px;" title="Return to Welcome Screen">
+                <a href="#" id="home-globe" style="cursor: pointer; text-decoration: none; margin-right: 12px;" title="Return to Welcome Screen" onclick="goToWelcomeScreen(event)">
                     <i class="fas fa-house" style="color: white; font-size: 1.2rem;"></i>
                 </a>
                 <div id="homeButton" style="display: flex; align-items: center;">
@@ -1124,7 +1124,6 @@
                 </button>
             </div>
             <div class="modal-body">
-                <h3>Facebook Archive Explorer</h3>
                 <p class="copyright">© 2025 Darien Bathalter</p>
                 <p>For bespoke data visualization tools...</p>
                 <p><a href="https://quiettools.dev" target="_blank">https://quiettools.dev</a></p>
@@ -2201,6 +2200,15 @@
                 }
             });
         });
+
+        // Function to go to welcome screen bypassing login
+        function goToWelcomeScreen(event) {
+            event.preventDefault();
+            // Store a flag to bypass login screen
+            sessionStorage.setItem('bypassLogin', 'true');
+            // Navigate to root
+            window.location.href = '../../index.html';
+        }
     </script>
 </body>
 </html><!-- GitHub Pages deployment trigger -->

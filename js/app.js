@@ -44,8 +44,30 @@ class ArchiveExplorer {
                 navbar.classList.add('hidden');
             }
             
+            // Check if we should bypass login screen
+            if (sessionStorage.getItem('bypassLogin') === 'true') {
+                // Clear the flag
+                sessionStorage.removeItem('bypassLogin');
+                
+                // Show navbar
+                if (navbar) {
+                    navbar.classList.remove('hidden');
+                }
+                
+                // Go directly to mode selection
+                this.showModeSelection();
+                
+                // Set up interactive gradient backgrounds for the welcome screen
+                this.setupInteractiveGradients();
+                
+                return;
+            }
+            
             // Set up password verification
             this.setupPasswordVerification();
+            
+            // Set up interactive gradient backgrounds
+            this.setupInteractiveGradients();
             
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
@@ -68,33 +90,54 @@ class ArchiveExplorer {
             
             const password = passwordInput.value;
             const correctPassword = 'mmwelcome';
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            const submitContent = submitBtn.querySelector('.submit-content');
+            const loadingContent = submitBtn.querySelector('.loading-content');
             
-            if (password === correctPassword) {
-                // Hide password modal with fade out
-                passwordModal.style.opacity = '0';
-                setTimeout(() => {
-                    passwordModal.style.display = 'none';
-                    
+            // Show loading state
+            submitBtn.disabled = true;
+            submitContent.style.display = 'none';
+            loadingContent.style.display = 'flex';
+            loadingContent.style.alignItems = 'center';
+            loadingContent.style.justifyContent = 'center';
+            
+            // Simulate brief loading period
+            setTimeout(() => {
+                if (password === correctPassword) {
                     // Show navbar
                     const navbar = document.querySelector('.navbar');
                     if (navbar) {
                         navbar.classList.remove('hidden');
                     }
                     
-                    // Show mode selection after password is correct
-                    this.showModeSelection();
-                }, 300);
-            } else {
-                // Show error message
-                passwordError.style.display = 'block';
-                passwordInput.value = '';
-                passwordInput.focus();
-                
-                // Hide error after 3 seconds
-                setTimeout(() => {
-                    passwordError.style.display = 'none';
-                }, 3000);
-            }
+                    // Fade out only the password modal content, keeping background
+                    const passwordContent = passwordModal.querySelector('.password-modal-content');
+                    if (passwordContent) {
+                        passwordContent.style.transition = 'opacity 0.5s ease-out';
+                        passwordContent.style.opacity = '0';
+                    }
+                    
+                    setTimeout(() => {
+                        // Show mode selection after fade completes
+                        this.showModeSelection();
+                    }, 500);
+                } else {
+                    // Reset button state
+                    submitBtn.disabled = false;
+                    submitContent.style.display = 'block';
+                    loadingContent.style.display = 'none';
+                    
+                    // Show error message
+                    passwordError.style.display = 'block';
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                    
+                    // Hide error after 3 seconds
+                    setTimeout(() => {
+                        passwordError.style.display = 'none';
+                    }, 3000);
+                }
+            }, 800); // Brief loading delay
         });
         
         // Focus on password input
@@ -102,20 +145,87 @@ class ArchiveExplorer {
     }
 
     /**
+     * Set up interactive gradient backgrounds
+     */
+    setupInteractiveGradients() {
+        const passwordModal = document.getElementById('passwordModal');
+        const directoryModal = document.getElementById('directorySelectionModal');
+        
+        // Add mouse movement listeners to both modals
+        [passwordModal, directoryModal].forEach(modal => {
+            if (modal) {
+                modal.addEventListener('mousemove', (e) => {
+                    // Subtle movement of gradient spheres
+                    const spheres = modal.querySelectorAll('.gradient-sphere');
+                    const moveX = (e.clientX / window.innerWidth - 0.5) * 5;
+                    const moveY = (e.clientY / window.innerHeight - 0.5) * 5;
+                    
+                    spheres.forEach((sphere, index) => {
+                        const multiplier = (index + 1) * 0.3; // Different movement for each sphere
+                        sphere.style.transform = `translate(${moveX * multiplier}px, ${moveY * multiplier}px)`;
+                    });
+                });
+            }
+        });
+    }
+
+    /**
      * Show mode selection modal
      */
     showModeSelection() {
+        const passwordModal = document.getElementById('passwordModal');
         const modal = document.getElementById('directorySelectionModal');
         const modeSelection = document.getElementById('modeSelection');
         const localArchiveSetup = document.getElementById('localArchiveSetup');
+        
+        // Hide password modal completely
+        if (passwordModal) {
+            passwordModal.style.display = 'none';
+        }
         
         // Show modal and mode selection
         modal.style.display = 'flex';
         modeSelection.style.display = 'block';
         localArchiveSetup.style.display = 'none';
         
+        // Reset any progress indicators
+        this.hideAllProgressIndicators();
+        
         // Set up mode selection event listeners
         this.setupModeEventListeners();
+    }
+
+    /**
+     * Hide all progress indicators and error messages
+     */
+    hideAllProgressIndicators() {
+        // Hide loading screen
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        
+        // Hide directory status indicators
+        const directoryStatus = document.getElementById('directoryStatus');
+        const directoryError = document.getElementById('directoryError');
+        
+        if (directoryStatus) {
+            directoryStatus.style.display = 'none';
+        }
+        
+        if (directoryError) {
+            directoryError.style.display = 'none';
+        }
+        
+        // Reset any loading buttons to normal state
+        const buttons = ['selectLocalArchiveBtn', 'selectYouTubeBtn', 'selectInstagramBtn', 'selectFacebookBtn'];
+        buttons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = btn.innerHTML.replace(/Loading.*/, btn.dataset.originalText || 'Begin');
+            }
+        });
     }
 
     /**
@@ -628,6 +738,19 @@ class ArchiveExplorer {
             if (homeGlobe) {
                 homeGlobe.addEventListener('click', (e) => {
                     e.preventDefault();
+                    // Hide password modal if it's showing and go directly to welcome screen
+                    const passwordModal = document.getElementById('passwordModal');
+                    if (passwordModal) {
+                        passwordModal.style.display = 'none';
+                    }
+                    
+                    // Show navbar
+                    const navbar = document.querySelector('.navbar');
+                    if (navbar) {
+                        navbar.classList.remove('hidden');
+                    }
+                    
+                    // Go directly to mode selection
                     this.showModeSelection();
                 });
             }
@@ -751,6 +874,28 @@ class ArchiveExplorer {
                     this.switchInsightTab(e.target.dataset.tab);
                 }
             });
+
+            // About modal handling
+            const aboutBtn = document.getElementById('about-btn');
+            const aboutModal = document.getElementById('aboutModal');
+            const closeAboutModal = document.getElementById('closeAboutModal');
+
+            if (aboutBtn && aboutModal && closeAboutModal) {
+                aboutBtn.addEventListener('click', () => {
+                    aboutModal.classList.add('show');
+                });
+
+                closeAboutModal.addEventListener('click', () => {
+                    aboutModal.classList.remove('show');
+                });
+
+                // Close modal when clicking outside
+                aboutModal.addEventListener('click', (e) => {
+                    if (e.target === aboutModal) {
+                        aboutModal.classList.remove('show');
+                    }
+                });
+            }
             
             console.log('✅ Event listeners set up successfully');
             
@@ -1550,8 +1695,17 @@ class ArchiveExplorer {
             
             if (preComputed.word_cloud.length > 0) {
                 // Use pre-computed data for instant loading
-                this.renderWordCloud(preComputed.word_cloud);
-                this.renderLikedWords(preComputed.liked_words);
+                this.renderAnalyticsWordCloud(preComputed.word_cloud);
+                this.renderAnalyticsLikedWords(preComputed.liked_words);
+                
+                // Generate sentiment and themes analysis even for precomputed data
+                const allComments = await this.dataManager.getAllComments(this.currentVideo.video_id, {});
+                const flatComments = this.flattenComments(allComments);
+                const sentimentData = this.analyzeSentiment(flatComments);
+                const themesData = this.analyzeThemes(flatComments);
+                this.renderSentimentAnalysis(sentimentData);
+                this.renderThemesAnalysis(themesData);
+                
                 this.elements.commentInsights.style.display = 'block';
                 return;
             }
@@ -1565,13 +1719,17 @@ class ArchiveExplorer {
                 return;
             }
 
-            // Generate word frequency analysis
+            // Generate all analytics
             const wordFreq = this.analyzeWordFrequency(flatComments);
             const likedWords = this.analyzeLikedCommentWords(flatComments);
+            const sentimentData = this.analyzeSentiment(flatComments);
+            const themesData = this.analyzeThemes(flatComments);
 
             // Update UI
-            this.renderWordCloud(wordFreq);
-            this.renderLikedWords(likedWords);
+            this.renderAnalyticsWordCloud(wordFreq);
+            this.renderAnalyticsLikedWords(likedWords);
+            this.renderSentimentAnalysis(sentimentData);
+            this.renderThemesAnalysis(themesData);
             this.elements.commentInsights.style.display = 'block';
 
         } catch (error) {
@@ -1701,21 +1859,197 @@ class ArchiveExplorer {
      */
     switchInsightTab(tabName) {
         // Update tab buttons
-        document.querySelectorAll('[data-tab]').forEach(btn => {
+        document.querySelectorAll('.analytics-tab').forEach(btn => {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 
         // Show/hide tab content
-        document.querySelectorAll('.insight-tab').forEach(tab => {
+        document.querySelectorAll('.tab-pane').forEach(tab => {
+            tab.classList.remove('active');
             tab.style.display = 'none';
         });
 
-        if (tabName === 'wordcloud') {
-            document.getElementById('wordCloudTab').style.display = 'block';
-        } else if (tabName === 'liked') {
-            document.getElementById('likedWordsTab').style.display = 'block';
+        const targetTab = document.getElementById(`${tabName}Tab`);
+        if (targetTab) {
+            targetTab.classList.add('active');
+            targetTab.style.display = 'block';
         }
+    }
+
+    /**
+     * Render word cloud in analytics panel
+     */
+    renderAnalyticsWordCloud(wordFreq) {
+        const container = document.getElementById('analyticsWordCloud');
+        if (!container) return;
+        
+        if (wordFreq.length === 0) {
+            container.innerHTML = '<div class="text-muted">No word data available</div>';
+            return;
+        }
+        
+        // Calculate sizes based on frequency
+        const maxCount = Math.max(...wordFreq.map(w => w.count));
+        const minCount = Math.min(...wordFreq.map(w => w.count));
+        
+        const html = wordFreq.slice(0, 15).map(({ word, count }) => {
+            const relativeSize = minCount === maxCount ? 2 : 
+                Math.round(1 + (count - minCount) / (maxCount - minCount) * 3);
+                
+            return `<span class="analytics-word-item size-${relativeSize}" title="${count} mentions">
+                ${word} <span style="opacity: 0.7;">${count}</span>
+            </span>`;
+        }).join('');
+        
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render liked words in analytics panel
+     */
+    renderAnalyticsLikedWords(likedWords) {
+        const container = document.getElementById('analyticsLikedWords');
+        if (!container) return;
+        
+        if (likedWords.length === 0) {
+            container.innerHTML = '<div class="text-muted">No liked word data available</div>';
+            return;
+        }
+        
+        const html = likedWords.slice(0, 12).map(({ word, avgLikes, count }, index) => {
+            // Determine size based on position (like word cloud)
+            let sizeClass = 'size-3'; // default
+            if (index === 0) sizeClass = 'size-5';
+            else if (index === 1) sizeClass = 'size-4';
+            else if (index < 4) sizeClass = 'size-3';
+            else if (index < 8) sizeClass = 'size-2';
+            else sizeClass = 'size-1';
+            
+            return `<span class="analytics-liked-word ${sizeClass}" title="Average ${Math.round(avgLikes)} likes in ${count} comments">
+                ${word}<span class="count">${Math.round(avgLikes)}</span>
+            </span>`;
+        }).join('');
+        
+        container.innerHTML = html;
+    }
+
+    /**
+     * Analyze comment sentiment
+     */
+    analyzeSentiment(comments) {
+        const sentiments = {
+            positive: { count: 0, words: ['amazing', 'love', 'thank', 'great', 'wonderful', 'fantastic', 'incredible', 'awesome', 'perfect', 'blessed'] },
+            grateful: { count: 0, words: ['grateful', 'thankful', 'bless', 'appreciate', 'thank you', 'thanks'] },
+            healing: { count: 0, words: ['healing', 'better', 'improved', 'recovery', 'healed', 'relief', 'helped'] },
+            questioning: { count: 0, words: ['?', 'how', 'what', 'when', 'where', 'why', 'can you', 'could you'] }
+        };
+        
+        comments.forEach(comment => {
+            const text = (comment.content || comment.text || '').toLowerCase();
+            
+            Object.keys(sentiments).forEach(sentiment => {
+                sentiments[sentiment].words.forEach(word => {
+                    if (text.includes(word)) {
+                        sentiments[sentiment].count++;
+                    }
+                });
+            });
+        });
+        
+        const total = comments.length;
+        return {
+            positive: Math.round((sentiments.positive.count / total) * 100),
+            grateful: Math.round((sentiments.grateful.count / total) * 100),
+            healing: Math.round((sentiments.healing.count / total) * 100),
+            questioning: Math.round((sentiments.questioning.count / total) * 100)
+        };
+    }
+
+    /**
+     * Render sentiment analysis
+     */
+    renderSentimentAnalysis(sentimentData) {
+        const container = document.getElementById('sentimentAnalysis');
+        if (!container) return;
+        
+        const html = `
+            <div class="sentiment-grid">
+                <div class="sentiment-item">
+                    <span class="sentiment-emoji">😍</span>
+                    <div class="sentiment-label">Positive</div>
+                    <div class="sentiment-percentage">${sentimentData.positive}%</div>
+                </div>
+                <div class="sentiment-item">
+                    <span class="sentiment-emoji">🙏</span>
+                    <div class="sentiment-label">Grateful</div>
+                    <div class="sentiment-percentage">${sentimentData.grateful}%</div>
+                </div>
+                <div class="sentiment-item">
+                    <span class="sentiment-emoji">💚</span>
+                    <div class="sentiment-label">Healing</div>
+                    <div class="sentiment-percentage">${sentimentData.healing}%</div>
+                </div>
+                <div class="sentiment-item">
+                    <span class="sentiment-emoji">❓</span>
+                    <div class="sentiment-label">Questions</div>
+                    <div class="sentiment-percentage">${sentimentData.questioning}%</div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    /**
+     * Analyze themes and topics
+     */
+    analyzeThemes(comments) {
+        const themes = {
+            'Recipe Requests': { count: 0, keywords: ['recipe', 'how to make', 'ingredients', 'link'] },
+            'Health Questions': { count: 0, keywords: ['how long', 'dosage', 'how much', 'safe', 'pregnancy'] },
+            'Success Stories': { count: 0, keywords: ['helped', 'better', 'improved', 'healed', 'working', 'results'] },
+            'Protocol Questions': { count: 0, keywords: ['celery juice', 'heavy metal', 'detox', 'protocol', 'supplements'] },
+            'Gratitude': { count: 0, keywords: ['thank you', 'grateful', 'bless', 'saved my life', 'appreciate'] }
+        };
+        
+        comments.forEach(comment => {
+            const text = (comment.content || comment.text || '').toLowerCase();
+            
+            Object.keys(themes).forEach(theme => {
+                themes[theme].keywords.forEach(keyword => {
+                    if (text.includes(keyword)) {
+                        themes[theme].count++;
+                    }
+                });
+            });
+        });
+        
+        // Sort themes by count and return top ones
+        return Object.keys(themes)
+            .map(theme => ({ theme, count: themes[theme].count }))
+            .filter(({ count }) => count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8);
+    }
+
+    /**
+     * Render themes analysis
+     */
+    renderThemesAnalysis(themesData) {
+        const container = document.getElementById('themesAnalysis');
+        if (!container) return;
+        
+        if (themesData.length === 0) {
+            container.innerHTML = '<div class="text-muted">No theme data available</div>';
+            return;
+        }
+        
+        const html = themesData.map(({ theme, count }) => {
+            return `<span class="theme-item" title="${count} mentions">${theme} (${count})</span>`;
+        }).join(' ');
+        
+        container.innerHTML = html;
     }
 
     /**

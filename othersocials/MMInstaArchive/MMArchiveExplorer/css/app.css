@@ -8,11 +8,29 @@
     --dark-color: #343a40;
     --light-color: #f8f9fa;
     --medical-gold: #FFD700;
+    --titlebar-bg: #353a3f;
+    --titlebar-text: #e4e6ea;
+    --accent-color: #1e61bd;
+    --accent-hover: #1851a3;
+    --border-color: #e9ecef;
+    --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.04);
+    --shadow-medium: 0 4px 24px rgba(0, 0, 0, 0.08);
+    --shadow-heavy: 0 8px 40px rgba(0, 0, 0, 0.12);
     
     /* Instagram-style gradients */
     --instagram-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
     --instagram-gradient-light: linear-gradient(45deg, #f5a623 0%, #f7931e 25%, #fb6c4d 50%, #e85a97 75%, #d13adf 100%);
     --instagram-gradient-hover: linear-gradient(45deg, #e8832e 0%, #d65d37 25%, #c7223d 50%, #b71e5e 75%, #a71680 100%);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 50%, #ffe5d9 100%);
+    background-attachment: fixed;
+    padding-top: 75px;
+    margin: 0;
+    min-height: 100vh;
+    line-height: 1.6;
 }
 
 /* View Toggle Styles */
@@ -2887,4 +2905,136 @@ body {
         width: 36px;
         height: 36px;
     }
+}
+
+/* Unified Titlebar Styles */
+.titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 75px;
+    background: var(--titlebar-bg);
+    border-bottom: 1px solid #4a4b4c;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 1000;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.titlebar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.titlebar-left h1 {
+    color: var(--titlebar-text);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.titlebar-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 2rem;
+}
+
+.titlebar-search {
+    flex: 1;
+    position: relative;
+    max-width: 400px;
+}
+
+.titlebar-search input {
+    width: 100%;
+    padding: 10px 40px 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--titlebar-text);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.titlebar-search input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.titlebar-search input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.titlebar-search i {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
+
+.titlebar-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.titlebar-filter-btn {
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--titlebar-text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.titlebar-filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.titlebar-filter-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.help-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--titlebar-text);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.help-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
 } 
