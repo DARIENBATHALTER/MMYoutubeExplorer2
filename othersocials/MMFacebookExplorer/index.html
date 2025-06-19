@@ -1208,6 +1208,61 @@
             border-color: rgba(220, 53, 69, 0.3) !important;
             transform: translateY(-2px);
         }
+
+        /* Mobile Titlebar Styles */
+        @media (max-width: 768px) {
+            .titlebar {
+                height: auto;
+                min-height: 75px;
+                padding: 0;
+            }
+            
+            .titlebar-content {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+                padding: 0;
+            }
+            
+            .titlebar-left {
+                padding: 12px 20px;
+                justify-content: space-between;
+                width: 100%;
+            }
+            
+            .titlebar-center {
+                padding: 0 20px 12px 20px;
+                margin: 0;
+                max-width: none;
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .titlebar-search {
+                max-width: none;
+            }
+            
+            .titlebar-search input {
+                width: 100%;
+            }
+            
+            .titlebar-filters {
+                justify-content: flex-start;
+            }
+            
+            .help-button {
+                order: 1;
+            }
+            
+            .titlebar-left h1 {
+                font-size: 1.3rem;
+            }
+            
+            #sort-select {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1228,10 +1283,12 @@
                     <input type="text" id="titlebarSearchInput" placeholder="Search posts by content, author, or keywords...">
                 </div>
                 <div class="titlebar-filters">
-                    <button class="titlebar-filter-btn active" data-filter="all">All</button>
-                    <button class="titlebar-filter-btn" data-filter="high-engagement">High Engagement</button>
-                    <button class="titlebar-filter-btn" data-filter="recent">Recent</button>
-                    <button class="titlebar-filter-btn" data-filter="popular">Popular</button>
+                    <select id="sort-select" class="titlebar-filter-btn" style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: var(--titlebar-text); padding: 8px 12px;">
+                        <option value="all">All Posts</option>
+                        <option value="high-engagement">High Engagement</option>
+                        <option value="recent">Recent Posts</option>
+                        <option value="popular">Popular Posts</option>
+                    </select>
                 </div>
             </div>
             <button class="help-button" id="helpButton">
@@ -1483,14 +1540,13 @@
                     this.filterPosts();
                 });
 
-                document.querySelectorAll('.titlebar-filter-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.titlebar-filter-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.currentFilter = e.target.dataset.filter;
+                const sortSelect = document.getElementById('sort-select');
+                if (sortSelect) {
+                    sortSelect.addEventListener('change', (e) => {
+                        this.currentFilter = e.target.value;
                         this.filterPosts();
                     });
-                });
+                }
             }
 
             filterPosts() {
@@ -2251,8 +2307,8 @@
             homeButton.addEventListener('click', () => {
                 // Clear search and reset filters
                 document.getElementById('titlebarSearchInput').value = '';
-                document.querySelectorAll('.titlebar-filter-btn').forEach(b => b.classList.remove('active'));
-                document.querySelector('.titlebar-filter-btn[data-filter="all"]').classList.add('active');
+                const sortSelect = document.getElementById('sort-select');
+                if (sortSelect) sortSelect.value = 'all';
                 
                 // Reset the analytics instance
                 window.facebookAnalytics.searchTerm = '';

@@ -421,6 +421,56 @@ body {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Mobile Titlebar Styles */
+@media (max-width: 768px) {
+    .titlebar {
+        height: auto;
+        min-height: 75px;
+        padding: 0;
+    }
+    
+    .titlebar-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 0;
+    }
+    
+    .titlebar-left {
+        padding: 12px 20px;
+        justify-content: space-between;
+        width: 100%;
+    }
+    
+    .titlebar-center {
+        padding: 0 20px 12px 20px;
+        margin: 0;
+        max-width: none;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .titlebar-search {
+        max-width: none;
+    }
+    
+    .titlebar-search input {
+        width: 100%;
+    }
+    
+    .titlebar-filters {
+        justify-content: flex-start;
+    }
+    
+    .help-button {
+        order: 1;
+    }
+    
+    .titlebar-left h1 {
+        font-size: 1.3rem;
+    }
+}
+
 /* Unified App Drawer Sidebar */
 .app-drawer {
     position: fixed;
