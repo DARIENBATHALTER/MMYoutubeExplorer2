@@ -2972,13 +2972,15 @@ body {
 
 .titlebar-search input {
     width: 100%;
-    padding: 10px 40px 10px 16px;
+    padding: 8px 40px 8px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.1);
     color: var(--titlebar-text);
     font-size: 14px;
     transition: all 0.3s ease;
+    height: 40px;
+    box-sizing: border-box;
 }
 
 .titlebar-search input::placeholder {
