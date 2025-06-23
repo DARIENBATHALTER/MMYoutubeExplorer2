@@ -322,6 +322,12 @@ body {
     gap: 12px;
 }
 
+.titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .titlebar-left h1 {
     color: var(--titlebar-text);
     font-size: 1.5rem;
@@ -339,12 +345,10 @@ body {
 }
 
 .titlebar-center {
-    flex: 1;
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: 800px;
-    margin: 0 2rem;
+    max-width: 600px;
 }
 
 .titlebar-search {
@@ -451,6 +455,12 @@ body {
     .titlebar-left {
         padding: 12px 20px;
         justify-content: space-between;
+        width: 100%;
+    }
+    
+    .titlebar-right {
+        flex-direction: column;
+        align-items: stretch;
         width: 100%;
     }
     

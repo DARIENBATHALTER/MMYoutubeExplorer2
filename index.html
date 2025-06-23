@@ -44,25 +44,27 @@
                     <h1>MM YouTube Archive Explorer</h1>
                 </div>
             </div>
-            <div class="titlebar-center" id="channel-navigation">
-                <div class="titlebar-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="search-input" placeholder="Search videos by title, description, or keywords...">
+            <div class="titlebar-right">
+                <div class="titlebar-center" id="channel-navigation">
+                    <div class="titlebar-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Search videos by title, description, or keywords...">
+                    </div>
+                    <div class="titlebar-filters">
+                        <select id="sort-select" class="titlebar-filter-btn" style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: var(--titlebar-text); padding: 8px 12px;">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                            <option value="views-desc">Most Views</option>
+                            <option value="views-asc">Least Views</option>
+                            <option value="comments-desc">Most Comments</option>
+                            <option value="comments-asc">Least Comments</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="titlebar-filters">
-                    <select id="sort-select" class="titlebar-filter-btn" style="border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: var(--titlebar-text); padding: 8px 12px;">
-                        <option value="date-desc">Newest First</option>
-                        <option value="date-asc">Oldest First</option>
-                        <option value="views-desc">Most Views</option>
-                        <option value="views-asc">Least Views</option>
-                        <option value="comments-desc">Most Comments</option>
-                        <option value="comments-asc">Least Comments</option>
-                    </select>
-                </div>
+                <button class="help-button" id="about-btn" title="About">
+                    <i class="fas fa-question"></i>
+                </button>
             </div>
-            <button class="help-button" id="about-btn" title="About">
-                <i class="fas fa-question"></i>
-            </button>
         </div>
     </div>
 
