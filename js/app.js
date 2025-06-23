@@ -539,8 +539,8 @@ class ArchiveExplorer {
             searchInput: 'search-input',
             sortSelect: 'sort-select',
             statsBar: 'statsBar',
-            resultCount: 'resultCount',
-            totalComments: 'totalComments',
+            // resultCount: 'resultCount', // Removed - badge no longer exists in HTML
+            // totalComments: 'totalComments', // Removed - badge no longer exists in HTML
             videoGridView: 'videoGridView',
             videoDetailView: 'videoDetailView',
             videoGrid: 'videoGrid',
@@ -699,6 +699,14 @@ class ArchiveExplorer {
                 });
             }
 
+            // Comment Analytics button
+            const commentAnalyticsBtn = document.getElementById('commentAnalyticsBtn');
+            if (commentAnalyticsBtn) {
+                commentAnalyticsBtn.addEventListener('click', () => {
+                    this.showCommentAnalytics();
+                });
+            }
+
             // Export progress close
             document.addEventListener('click', (e) => {
                 if (e.target.matches('.close-progress')) {
@@ -736,6 +744,27 @@ class ArchiveExplorer {
                 }
             });
 
+            // Export comment button from analytics modal (event delegation)
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('.export-comment-btn') || e.target.closest('.export-comment-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const btn = e.target.closest('.export-comment-btn');
+                    const commentId = btn?.dataset?.commentId;
+                    
+                    if (commentId) {
+                        const comment = this.findCommentById(commentId);
+                        if (comment) {
+                            this.exportSingleComment(comment);
+                        } else {
+                            console.error('Comment not found:', commentId);
+                            this.showError('Comment not found');
+                        }
+                    }
+                }
+            });
+            
             // Insights tab switching
             document.addEventListener('click', (e) => {
                 if (e.target.matches('[data-tab]')) {
@@ -846,7 +875,8 @@ class ArchiveExplorer {
             const result = await this.dataManager.getVideos(filters, this.currentPagination);
             this.renderVideoGrid(result.videos);
             this.renderPagination(result);
-            this.updateResultCount(result.total);
+            // this.updateResultCount(result.total); // Removed - badge no longer exists in HTML
+            this.updateChannelStats();
             
         } catch (error) {
             console.error('❌ Failed to load videos:', error);
@@ -1021,9 +1051,13 @@ class ArchiveExplorer {
             this.elements.videoGridView.style.display = 'none';
             this.elements.videoDetailView.style.display = 'block';
             
-            // Hide channel navigation tools and stats bar
+            // Hide channel navigation tools, stats bar, and channel statistics
             document.getElementById('channel-navigation').style.display = 'none';
             this.elements.statsBar.style.display = 'none';
+            const channelStats = document.getElementById('channelStats');
+            if (channelStats) {
+                channelStats.style.display = 'none';
+            }
             
             // Update breadcrumb
             this.updateBreadcrumb(['Videos', video.title]);
@@ -1057,9 +1091,13 @@ class ArchiveExplorer {
         this.elements.videoDetailView.style.display = 'none';
         this.elements.videoGridView.style.display = 'block';
         
-        // Show channel navigation tools and stats bar
+        // Show channel navigation tools, stats bar, and channel statistics
         document.getElementById('channel-navigation').style.display = 'flex';
         this.elements.statsBar.style.display = 'block';
+        const channelStats = document.getElementById('channelStats');
+        if (channelStats) {
+            channelStats.style.display = 'block';
+        }
         
         this.updateBreadcrumb(['Videos']);
         
@@ -1197,9 +1235,14 @@ class ArchiveExplorer {
      * Find comment by ID in current data
      */
     findCommentById(commentId) {
-        // Search in all comments for this video
-        const allComments = this.dataManager.comments.filter(c => c.video_id === this.currentVideo?.video_id);
-        return allComments.find(c => c.comment_id === commentId);
+        // Search in current video comments if in video view, otherwise search all comments
+        if (this.currentVideo?.video_id) {
+            const allComments = this.dataManager.comments.filter(c => c.video_id === this.currentVideo.video_id);
+            return allComments.find(c => c.comment_id === commentId);
+        } else {
+            // Search in all comments (for analytics modal context)
+            return this.dataManager.comments.find(c => c.comment_id === commentId);
+        }
     }
 
     /**
@@ -1397,16 +1440,20 @@ class ArchiveExplorer {
      * Update stats display
      */
     updateStats() {
-        const stats = this.dataManager.getStats();
-        this.elements.totalComments.textContent = `${this.formatNumber(stats.totalComments)} comments`;
+        // Update comprehensive channel statistics
+        this.updateChannelStats();
+        
+        // Also update legacy comment count for compatibility
+        // const stats = this.dataManager.getStats();
+        // this.elements.totalComments.textContent = `${this.formatNumber(stats.totalComments)} comments`; // Removed - badge no longer exists in HTML
     }
 
     /**
-     * Update result count
+     * Update result count - DISABLED (badge removed from HTML)
      */
-    updateResultCount(count) {
-        this.elements.resultCount.textContent = `${this.formatNumber(count)} videos`;
-    }
+    // updateResultCount(count) {
+    //     this.elements.resultCount.textContent = `${this.formatNumber(count)} videos`;
+    // }
 
     /**
      * Render pagination
@@ -1975,6 +2022,353 @@ class ArchiveExplorer {
             console.log('ℹ️ Using standard export mode with 49 comments per ZIP file for compatibility.');
         }
     }
+
+    /**
+     * Update channel statistics
+     */
+    updateChannelStats() {
+        try {
+            const videos = this.dataManager.videos || [];
+            const allComments = this.dataManager.comments || [];
+            
+            // Calculate stats
+            const totalVideos = videos.length;
+            const totalComments = allComments.length;
+            const totalLikes = allComments.reduce((sum, comment) => sum + (parseInt(comment.like_count) || 0), 0);
+            const totalViews = videos.reduce((sum, video) => sum + (parseInt(video.view_count) || 0), 0);
+            
+            // Calculate unique commenters
+            const uniqueCommenters = new Set(allComments.map(comment => comment.author)).size;
+            
+            // Calculate average engagement (comments per video)
+            const avgEngagement = totalVideos > 0 ? Math.round(totalComments / totalVideos) : 0;
+            
+            // Update DOM elements
+            document.getElementById('totalVideos').textContent = this.formatNumber(totalVideos);
+            document.getElementById('totalChannelComments').textContent = this.formatNumber(totalComments);
+            document.getElementById('totalLikes').textContent = this.formatNumber(totalLikes);
+            document.getElementById('totalViews').textContent = this.formatNumber(totalViews);
+            document.getElementById('avgEngagement').textContent = this.formatNumber(avgEngagement);
+            document.getElementById('uniqueCommenters').textContent = this.formatNumber(uniqueCommenters);
+            
+            // Show the channel stats section
+            const channelStats = document.getElementById('channelStats');
+            if (channelStats) {
+                channelStats.style.display = 'block';
+            }
+            
+        } catch (error) {
+            console.error('Failed to update channel stats:', error);
+        }
+    }
+
+    /**
+     * Show comment analytics modal
+     */
+    async showCommentAnalytics() {
+        try {
+            // Generate analytics data
+            const analytics = await this.generateChannelAnalytics();
+            
+            // Update analytics tiles
+            // document.getElementById('analyticsCommentsCount').textContent = this.formatNumber(analytics.totalComments); // Removed - element no longer exists in HTML
+            document.getElementById('analyticsLikesCount').textContent = this.formatNumber(analytics.totalLikes);
+            document.getElementById('analyticsUniqueCommenters').textContent = this.formatNumber(analytics.uniqueCommenters);
+            document.getElementById('analyticsAvgLikes').textContent = this.formatNumber(analytics.avgLikes);
+            
+            // Update word clouds
+            this.renderWordCloud('mostLikedWords', analytics.mostLikedWords);
+            this.renderWordCloud('mostFrequentWords', analytics.mostFrequentWords);
+            
+            // Load all comments
+            this.currentChannelCommentPagination = { page: 1, limit: 50 };
+            this.channelCommentsFiltered = analytics.allComments;
+            this.renderChannelComments();
+            
+            // Initialize search results count to show total comments
+            const searchResultsElement = document.getElementById('commentSearchResults');
+            if (searchResultsElement) {
+                const totalComments = analytics.allComments.length;
+                searchResultsElement.textContent = `${totalComments.toLocaleString()} comment${totalComments !== 1 ? 's' : ''} found`;
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('commentAnalyticsModal'));
+            modal.show();
+            
+            // Set up modal event listeners
+            this.setupAnalyticsEventListeners();
+            
+        } catch (error) {
+            console.error('Failed to show analytics:', error);
+            this.showError('Failed to load analytics data');
+        }
+    }
+
+    /**
+     * Generate channel analytics data
+     */
+    async generateChannelAnalytics() {
+        const allComments = this.dataManager.comments || [];
+        
+        const analytics = {
+            totalComments: allComments.length,
+            totalLikes: allComments.reduce((sum, comment) => sum + (parseInt(comment.like_count) || 0), 0),
+            uniqueCommenters: new Set(allComments.map(comment => comment.author)).size,
+            avgLikes: allComments.length > 0 ? Math.round(allComments.reduce((sum, comment) => sum + (parseInt(comment.like_count) || 0), 0) / allComments.length) : 0,
+            allComments: allComments.map(comment => ({
+                ...comment,
+                video_title: this.dataManager.getVideo(comment.video_id)?.title || 'Unknown Video'
+            }))
+        };
+        
+        // Calculate most liked words
+        analytics.mostLikedWords = this.calculateMostLikedWords(allComments);
+        
+        // Calculate most frequent words
+        analytics.mostFrequentWords = this.calculateMostFrequentWords(allComments);
+        
+        return analytics;
+    }
+
+    /**
+     * Calculate most liked words from comments
+     */
+    calculateMostLikedWords(comments) {
+        const wordLikes = {};
+        
+        comments.forEach(comment => {
+            const likes = parseInt(comment.like_count) || 0;
+            if (likes > 0) {
+                const words = this.extractWords(comment.text);
+                words.forEach(word => {
+                    if (!wordLikes[word]) wordLikes[word] = 0;
+                    wordLikes[word] += likes;
+                });
+            }
+        });
+        
+        return Object.entries(wordLikes)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 20)
+            .map(([word, likes]) => ({ word, count: likes }));
+    }
+
+    /**
+     * Calculate most frequent words from comments
+     */
+    calculateMostFrequentWords(comments) {
+        const wordCount = {};
+        
+        comments.forEach(comment => {
+            const words = this.extractWords(comment.text);
+            words.forEach(word => {
+                if (!wordCount[word]) wordCount[word] = 0;
+                wordCount[word]++;
+            });
+        });
+        
+        return Object.entries(wordCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 20)
+            .map(([word, count]) => ({ word, count }));
+    }
+
+    /**
+     * Extract meaningful words from text
+     */
+    extractWords(text) {
+        const stopWords = new Set(['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'can', 'may', 'might', 'must', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'a', 'an', 'so', 'just', 'get', 'got', 'like', 'go', 'going', 'went', 'come', 'came', 'see', 'saw', 'know', 'knew', 'think', 'thought', 'say', 'said', 'tell', 'told', 'take', 'took', 'make', 'made', 'give', 'gave', 'want', 'wanted', 'need', 'needed', 'try', 'tried', 'use', 'used', 'work', 'worked', 'look', 'looked', 'feel', 'felt', 'seem', 'seemed', 'leave', 'left', 'put', 'keep', 'kept', 'let', 'help', 'helped', 'show', 'showed', 'hear', 'heard', 'ask', 'asked', 'turn', 'turned', 'move', 'moved', 'live', 'lived', 'play', 'played', 'run', 'ran', 'bring', 'brought', 'sit', 'sat', 'stand', 'stood', 'lose', 'lost', 'pay', 'paid', 'meet', 'met', 'include', 'including', 'continue', 'continued', 'set', 'follow', 'followed', 'stop', 'stopped', 'create', 'created', 'speak', 'spoke', 'read', 'write', 'wrote', 'provide', 'provided', 'allow', 'allowed', 'add', 'added', 'spend', 'spent', 'grow', 'grew', 'open', 'opened', 'walk', 'walked', 'win', 'won', 'carry', 'carried', 'talk', 'talked', 'appear', 'appeared', 'produce', 'produced', 'offer', 'offered', 'consider', 'considered', 'suggest', 'suggested', 'require', 'required', 'expect', 'expected', 'build', 'built', 'stay', 'stayed', 'fall', 'fell', 'cut', 'send', 'sent', 'receive', 'received', 'remain', 'remained', 'serve', 'served', 'die', 'died', 'decide', 'decided', 'reach', 'reached', 'kill', 'killed', 'raise', 'raised', 'pass', 'passed', 'sell', 'sold', 'buy', 'bought', 'break', 'broke', 'wear', 'wore', 'choose', 'chose', 'treat', 'treated', 'watch', 'watched', 'return', 'returned', 'develop', 'developed', 'carry', 'carried', 'lead', 'led', 'understand', 'understood', 'face', 'faced', 'deal', 'dealt', 'pull', 'pulled', 'pick', 'picked', 'rise', 'rose', 'drop', 'dropped', 'plan', 'planned', 'save', 'saved', 'push', 'pushed', 'eat', 'ate', 'avoid', 'avoided', 'support', 'supported', 'change', 'changed', 'enter', 'entered', 'share', 'shared', 'manage', 'managed', 'improve', 'improved', 'maintain', 'maintained', 'remember', 'remembered', 'explain', 'explained', 'describe', 'described', 'join', 'joined', 'discuss', 'discussed', 'introduce', 'introduced', 'enjoy', 'enjoyed', 'agree', 'agreed', 'compare', 'compared', 'control', 'controlled', 'visit', 'visited', 'attend', 'attended', 'achieve', 'achieved', 'check', 'checked', 'protect', 'protected', 'complete', 'completed', 'apply', 'applied', 'accept', 'accepted', 'reduce', 'reduced', 'increase', 'increased', 'assume', 'assumed', 'prepare', 'prepared', 'relate', 'related', 'identify', 'identified', 'recognize', 'recognized', 'ensure', 'ensured', 'focus', 'focused', 'handle', 'handled', 'contain', 'contained', 'invest', 'invested', 'design', 'designed', 'express', 'expressed', 'wish', 'wished', 'thank', 'thanked', 'hope', 'hoped', 'love', 'loved', 'hate', 'hated', 'care', 'cared', 'worry', 'worried', 'believe', 'believed', 'realize', 'realized', 'learn', 'learned', 'teach', 'taught', 'study', 'studied', 'practice', 'practiced', 'discover', 'discovered', 'explore', 'explored', 'test', 'tested', 'prove', 'proved', 'solve', 'solved', 'answer', 'answered', 'question', 'questioned', 'wonder', 'wondered', 'doubt', 'doubted', 'guess', 'guessed', 'suppose', 'supposed', 'imagine', 'imagined', 'dream', 'dreamed', 'forget', 'forgot', 'ignore', 'ignored', 'notice', 'noticed', 'observe', 'observed', 'find', 'found', 'search', 'searched', 'seek', 'sought', 'wait', 'waited', 'call', 'called', 'text', 'texted', 'email', 'emailed', 'contact', 'contacted', 'connect', 'connected', 'communicate', 'communicated', 'respond', 'responded', 'reply', 'replied', 'react', 'reacted', 'listen', 'listened', 'mind', 'minded', 'matter', 'mattered', 'mean', 'meant', 'sound', 'sounded', 'sort', 'sorted', 'type', 'typed', 'kind', 'way', 'ways', 'time', 'times', 'day', 'days', 'year', 'years', 'week', 'weeks', 'month', 'months', 'hour', 'hours', 'minute', 'minutes', 'second', 'seconds', 'moment', 'moments', 'place', 'places', 'part', 'parts', 'side', 'sides', 'end', 'ends', 'point', 'points', 'line', 'lines', 'area', 'areas', 'back', 'front', 'top', 'bottom', 'left', 'right', 'here', 'there', 'where', 'when', 'how', 'why', 'what', 'who', 'which', 'whose', 'whom', 'now', 'then', 'today', 'tomorrow', 'yesterday', 'always', 'never', 'sometimes', 'often', 'usually', 'rarely', 'hardly', 'almost', 'quite', 'very', 'too', 'also', 'only', 'even', 'still', 'yet', 'already', 'again', 'once', 'twice', 'more', 'most', 'less', 'least', 'much', 'many', 'few', 'little', 'big', 'small', 'large', 'great', 'good', 'better', 'best', 'bad', 'worse', 'worst', 'new', 'old', 'young', 'long', 'short', 'high', 'low', 'early', 'late', 'fast', 'slow', 'quick', 'easy', 'hard', 'difficult', 'simple', 'complex', 'clear', 'dark', 'light', 'bright', 'heavy', 'light', 'strong', 'weak', 'hot', 'cold', 'warm', 'cool', 'wet', 'dry', 'clean', 'dirty', 'fresh', 'old', 'new', 'nice', 'beautiful', 'ugly', 'pretty', 'handsome', 'cute', 'smart', 'stupid', 'funny', 'serious', 'happy', 'sad', 'angry', 'mad', 'excited', 'bored', 'tired', 'sick', 'healthy', 'fine', 'okay', 'alright', 'sure', 'maybe', 'probably', 'definitely', 'certainly', 'possibly', 'likely', 'unlikely', 'true', 'false', 'right', 'wrong', 'correct', 'incorrect', 'yes', 'no', 'yeah', 'yep', 'nope', 'ok', 'well', 'oh', 'ah', 'um', 'uh', 'hmm', 'wow', 'hey', 'hi', 'hello', 'goodbye', 'bye', 'thanks', 'please', 'sorry', 'excuse', 'pardon']);
+        
+        return text
+            .toLowerCase()
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => word.length > 2 && !stopWords.has(word))
+            .slice(0, 100); // Limit processing for performance
+    }
+
+    /**
+     * Render word cloud
+     */
+    renderWordCloud(containerId, words) {
+        const container = document.getElementById(containerId);
+        if (!container || !words.length) return;
+        
+        const html = words.map(({word, count}, index) => {
+            const size = Math.max(0.65, 0.95 - (index / words.length) * 0.3); // Smaller size range
+            return `<span class="word-tag word-tag-small" style="font-size: ${size}rem;">
+                ${this.escapeHTML(word)} <span class="count">${this.formatNumber(count)}</span>
+            </span>`;
+        }).join('');
+        
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render channel comments
+     */
+    renderChannelComments() {
+        const container = document.getElementById('channelCommentsList');
+        if (!container || !this.channelCommentsFiltered) return;
+        
+        const startIndex = (this.currentChannelCommentPagination.page - 1) * this.currentChannelCommentPagination.limit;
+        const endIndex = startIndex + this.currentChannelCommentPagination.limit;
+        const pageComments = this.channelCommentsFiltered.slice(startIndex, endIndex);
+        
+        const html = pageComments.map(comment => {
+            const avatarColor = this.exportService.generateAvatarColor(comment.author);
+            const firstLetter = comment.author[1]?.toUpperCase() || comment.author[0]?.toUpperCase() || 'U';
+            const date = new Date(comment.published_at).toLocaleDateString();
+            const likes = this.formatNumber(comment.like_count);
+            
+            return `
+                <div class="comment-card">
+                    <div class="comment-video-context" onclick="window.app.showVideoFromComment('${comment.video_id}')">
+                        <i class="bi bi-play-btn-fill text-danger me-1"></i> ${this.escapeHTML(comment.video_title)}
+                    </div>
+                    <div class="comment-header">
+                        <div class="comment-author-section">
+                            <div class="comment-avatar" style="background-color: ${avatarColor};">
+                                ${firstLetter}
+                            </div>
+                            <div class="comment-meta">
+                                <div class="comment-author">${this.escapeHTML(comment.author)}</div>
+                                <div class="comment-date">${date}</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm export-comment-btn" 
+                                data-comment-id="${comment.comment_id}" 
+                                data-video-title="${this.escapeHTML(comment.video_title)}"
+                                title="Export this comment as PNG">
+                            <i class="bi bi-download"></i>
+                        </button>
+                    </div>
+                    <div class="comment-text">${this.escapeHTML(comment.text)}</div>
+                    <div class="comment-actions">
+                        <div class="comment-likes">
+                            <i class="bi bi-hand-thumbs-up"></i> ${likes}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        if (this.currentChannelCommentPagination.page === 1) {
+            container.innerHTML = html;
+        } else {
+            container.innerHTML += html;
+        }
+        
+        // Show/hide load more button
+        const loadMoreBtn = document.getElementById('loadMoreChannelComments');
+        if (loadMoreBtn) {
+            const hasMore = endIndex < this.channelCommentsFiltered.length;
+            loadMoreBtn.style.display = hasMore ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * Setup analytics event listeners
+     */
+    setupAnalyticsEventListeners() {
+        // Channel comment search
+        const searchInput = document.getElementById('channelCommentSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', this.debounce(() => {
+                this.filterChannelComments();
+            }, 300));
+        }
+        
+        // Channel comment sort
+        const sortSelect = document.getElementById('channelCommentSort');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                this.filterChannelComments();
+            });
+        }
+        
+        // Load more comments
+        const loadMoreBtn = document.getElementById('loadMoreChannelComments');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => {
+                this.currentChannelCommentPagination.page++;
+                this.renderChannelComments();
+            });
+        }
+    }
+
+    /**
+     * Filter channel comments based on search and sort
+     */
+    filterChannelComments() {
+        const allComments = this.dataManager.comments || [];
+        const search = document.getElementById('channelCommentSearch')?.value.toLowerCase() || '';
+        const sort = document.getElementById('channelCommentSort')?.value || 'likes-desc';
+        
+        // Add video titles to comments
+        let filtered = allComments.map(comment => ({
+            ...comment,
+            video_title: this.dataManager.getVideo(comment.video_id)?.title || 'Unknown Video'
+        }));
+        
+        // Apply search filter
+        if (search) {
+            filtered = filtered.filter(comment => 
+                comment.text.toLowerCase().includes(search) ||
+                comment.author.toLowerCase().includes(search) ||
+                comment.video_title.toLowerCase().includes(search)
+            );
+        }
+        
+        // Apply sort
+        switch (sort) {
+            case 'likes-desc':
+                filtered.sort((a, b) => (parseInt(b.like_count) || 0) - (parseInt(a.like_count) || 0));
+                break;
+            case 'likes-asc':
+                filtered.sort((a, b) => (parseInt(a.like_count) || 0) - (parseInt(b.like_count) || 0));
+                break;
+            case 'date-desc':
+                filtered.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+                break;
+            case 'date-asc':
+                filtered.sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
+                break;
+            case 'video':
+                filtered.sort((a, b) => a.video_title.localeCompare(b.video_title));
+                break;
+        }
+        
+        this.channelCommentsFiltered = filtered;
+        
+        // Update search results count
+        const resultsElement = document.getElementById('commentSearchResults');
+        if (resultsElement) {
+            const count = this.channelCommentsFiltered.length;
+            resultsElement.textContent = `${count.toLocaleString()} comment${count !== 1 ? 's' : ''} found`;
+        }
+        
+        this.currentChannelCommentPagination = { page: 1, limit: 50 };
+        this.renderChannelComments();
+    }
+
+    /**
+     * Show video from comment click
+     */
+    showVideoFromComment(videoId) {
+        // Close the analytics modal first
+        const modal = bootstrap.Modal.getInstance(document.getElementById('commentAnalyticsModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Show the video
+        setTimeout(() => {
+            this.showVideoDetail(videoId);
+        }, 300);
+    }
+
 }
 
 // Initialize the app when DOM is loaded

@@ -213,11 +213,72 @@
 
         <!-- Stats Bar (Home View Only) -->
             <div id="statsBar" class="stats-bar mb-0">
-            <span id="resultCount" class="badge bg-primary">0 videos</span>
-                <span id="totalComments" class="badge bg-secondary">0 comments</span>
-                <button type="button" id="exportAllVideos" class="btn btn-success">
+                <button type="button" id="commentAnalyticsBtn" class="btn btn-danger me-2">
+                <i class="bi bi-graph-up"></i> Comment Analytics
+            </button>
+                <button type="button" id="exportAllVideos" class="btn btn-secondary">
                 <i class="bi bi-download"></i> Export All Video Comments
             </button>
+            </div>
+        </div>
+
+        <!-- Channel Statistics -->
+        <div id="channelStats" class="channel-stats mb-4" style="display: none;">
+            <div class="row g-3">
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-play-btn-fill"></i>
+                        </div>
+                        <div class="stat-number" id="totalVideos">0</div>
+                        <div class="stat-label">Total<br>Videos</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </div>
+                        <div class="stat-number" id="totalChannelComments">0</div>
+                        <div class="stat-label">Total<br>Comments</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-heart-fill"></i>
+                        </div>
+                        <div class="stat-number" id="totalLikes">0</div>
+                        <div class="stat-label">Total<br>Likes</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-eye-fill"></i>
+                        </div>
+                        <div class="stat-number" id="totalViews">0</div>
+                        <div class="stat-label">Total<br>Views</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-bar-chart-fill"></i>
+                        </div>
+                        <div class="stat-number" id="avgEngagement">0</div>
+                        <div class="stat-label">Average Video<br>Comments</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div class="stat-number" id="uniqueCommenters">0</div>
+                        <div class="stat-label">Unique<br>Commenters</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -448,6 +509,141 @@
                 <p>Text / Voicemail: <a href="tel:+19045726183">(904) 572-6183</a></p>
                 
                 <p class="made-with">Made with Ode 🌿</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Analytics Modal -->
+    <div class="modal fade" id="commentAnalyticsModal" tabindex="-1" aria-labelledby="commentAnalyticsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commentAnalyticsModalLabel">
+                        <i class="bi bi-graph-up"></i> Channel Comment Analytics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Analytics Tiles -->
+                    <div class="analytics-tiles mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-3 col-sm-6">
+                                <div class="analytics-tile">
+                                    <div class="tile-icon bg-primary">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </div>
+                                    <div class="tile-content">
+                                        <div class="tile-number" id="analyticsCommentsCount">0</div>
+                                        <div class="tile-label">Total Comments</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="analytics-tile">
+                                    <div class="tile-icon bg-success">
+                                        <i class="bi bi-heart-fill"></i>
+                                    </div>
+                                    <div class="tile-content">
+                                        <div class="tile-number" id="analyticsLikesCount">0</div>
+                                        <div class="tile-label">Total Likes</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="analytics-tile">
+                                    <div class="tile-icon bg-info">
+                                        <i class="bi bi-people"></i>
+                                    </div>
+                                    <div class="tile-content">
+                                        <div class="tile-number" id="analyticsUniqueCommenters">0</div>
+                                        <div class="tile-label">Unique Commenters</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="analytics-tile">
+                                    <div class="tile-icon bg-warning">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </div>
+                                    <div class="tile-content">
+                                        <div class="tile-number" id="analyticsAvgLikes">0</div>
+                                        <div class="tile-label">Avg Likes/Comment</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Word Analytics (Collapsible) -->
+                    <div class="word-analytics mb-4">
+                        <button class="btn btn-outline-secondary btn-sm mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#wordAnalyticsCollapse" aria-expanded="false" aria-controls="wordAnalyticsCollapse">
+                            <i class="bi bi-chevron-right"></i> <i class="bi bi-cloud"></i> Word Analytics
+                        </button>
+                        <div class="collapse" id="wordAnalyticsCollapse">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="analytics-section">
+                                        <h6><i class="bi bi-star"></i> Most Liked Words</h6>
+                                        <div id="mostLikedWords" class="word-cloud word-cloud-small">
+                                            <!-- Most liked words will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analytics-section">
+                                        <h6><i class="bi bi-cloud"></i> Most Frequent Words</h6>
+                                        <div id="mostFrequentWords" class="word-cloud word-cloud-small">
+                                            <!-- Most frequent words will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Comments Section -->
+                    <div class="all-comments-section">
+                        <div class="mb-3">
+                            <h5><i class="bi bi-chat-square-text"></i> Search Channel Comments</h5>
+                        </div>
+                        
+                        <!-- Enhanced Comment Search -->
+                        <div class="comment-search-section mb-4">
+                            <div class="row mb-3">
+                                <div class="col-md-8">
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-primary text-white"><i class="bi bi-search"></i></span>
+                                        <input type="text" id="channelCommentSearch" class="form-control form-control-lg" placeholder="Search all channel comments...">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <select id="channelCommentSort" class="form-select form-select-lg">
+                                        <option value="likes-desc">Most Liked</option>
+                                        <option value="likes-asc">Least Liked</option>
+                                        <option value="date-desc">Newest</option>
+                                        <option value="date-asc">Oldest</option>
+                                        <option value="video">By Video</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="search-results-info">
+                                <span class="badge bg-info" id="commentSearchResults">0 comments found</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Comments List -->
+                        <div id="channelCommentsList" class="comments-list" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Comments will be loaded here -->
+                        </div>
+                        
+                        <!-- Load More Comments -->
+                        <div class="text-center mt-3">
+                            <button type="button" id="loadMoreChannelComments" class="btn btn-outline-primary btn-sm" style="display: none;">
+                                Load More Comments
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

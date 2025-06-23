@@ -20,7 +20,7 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 50%, #ffd6d6 100%);
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 50%, #e9ecef 100%);
     background-attachment: fixed;
     padding-top: 75px;
     margin: 0;
@@ -1574,4 +1574,339 @@ body.drawer-open #app {
 
 .analytics-tab:hover {
     transform: translateY(-1px);
+}
+
+/* Channel Statistics */
+.channel-stats {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow-light);
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    color: #ff0000;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+}
+
+/* Comment Analytics Modal */
+.analytics-tiles {
+    background: rgba(108, 117, 125, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid rgba(108, 117, 125, 0.1);
+}
+
+.analytics-tile {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--shadow-light);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.analytics-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+    border-color: #dc3545;
+}
+
+.tile-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.tile-content {
+    flex: 1;
+}
+
+.tile-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 2px;
+}
+
+.tile-label {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    font-weight: 500;
+}
+
+/* Word Analytics */
+.analytics-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.analytics-section h6 {
+    color: var(--secondary-color);
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.analytics-section h6 {
+    color: var(--dark-color);
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.word-cloud {
+    min-height: 150px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.word-tag {
+    background: var(--primary-color);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.word-tag:hover {
+    transform: scale(1.05);
+    background: var(--accent-hover);
+}
+
+.word-tag .count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+}
+
+/* Small word clouds for analytics modal */
+.word-cloud-small {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.word-tag-small {
+    background: var(--secondary-color) !important;
+    color: white !important;
+    padding: 3px 8px !important;
+    border-radius: 12px !important;
+    font-size: 0.7rem !important;
+    font-weight: 500 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 2px !important;
+    transition: all 0.2s ease !important;
+}
+
+.word-tag-small:hover {
+    transform: scale(1.05) !important;
+    background: var(--dark-color) !important;
+}
+
+.word-tag-small .count {
+    background: rgba(255, 255, 255, 0.3) !important;
+    padding: 1px 4px !important;
+    border-radius: 8px !important;
+    font-size: 0.6rem !important;
+}
+
+/* Enhanced search section styling */
+.comment-search-section {
+    background: rgba(13, 110, 253, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    border: 2px solid rgba(13, 110, 253, 0.1);
+}
+
+.search-results-info {
+    text-align: center;
+    margin-top: 10px;
+}
+
+#commentSearchResults {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+}
+
+/* All Comments Section */
+.all-comments-section {
+    background: rgba(248, 249, 250, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.all-comments-section h6 {
+    color: var(--dark-color);
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+#channelCommentsList {
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+}
+
+/* Channel Comments Styling - Match single video section */
+#channelCommentsList .comment-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+#channelCommentsList .comment-card:hover {
+    box-shadow: var(--shadow-light);
+    border-color: #d0d7de;
+}
+
+.comment-video-context {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.comment-video-context:hover {
+    background: rgba(220, 53, 69, 0.15);
+    color: #b02a37;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.comment-author-section {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.comment-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-right: 12px;
+}
+
+.comment-meta {
+    flex: 1;
+}
+
+.comment-author {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark-color);
+    margin-bottom: 2px;
+}
+
+.comment-date {
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+}
+
+.comment-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--dark-color);
+    margin-bottom: 12px;
+}
+
+.comment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.comment-likes {
+    display: flex;
+    align-items: center;
+    color: var(--secondary-color);
+    font-size: 0.85rem;
+}
+
+.comment-likes i {
+    margin-right: 6px;
+}
+
+.comment-video-title {
+    font-size: 0.75rem;
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.comment-video-title:hover {
+    text-decoration: underline;
+    cursor: pointer;
 } 
