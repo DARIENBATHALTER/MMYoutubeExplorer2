@@ -2,6 +2,9 @@
 YouTube_Downloads/
 YouTube_Downloads.zip
 
+# Exclude other social media apps (removed from YouTube-only version)
+othersocials/
+
 # Exclude system files
 .DS_Store
 .DS_Store?

@@ -35,53 +35,8 @@ class ArchiveExplorer {
                 throw new Error('Loading screen elements not found. Please check HTML structure.');
             }
             
-            // Hide loading screen initially
-            this.elements.loadingScreen.style.display = 'none';
-            
-            // Grey out navbar initially
-            const navbar = document.querySelector('.navbar');
-            if (navbar) {
-                navbar.classList.add('hidden');
-            }
-            
-            // Check if we should bypass login screen
-            if (sessionStorage.getItem('bypassLogin') === 'true') {
-                // Clear the flag
-                sessionStorage.removeItem('bypassLogin');
-                
-                // Show navbar
-                if (navbar) {
-                    navbar.classList.remove('hidden');
-                }
-                
-                // Go directly to mode selection
-                this.showModeSelection();
-                
-                // Set up interactive gradient backgrounds for the welcome screen
-                this.setupInteractiveGradients();
-                
-                return;
-            }
-            
-            // Check if we should bypass both login and welcome screens (from sidebar navigation)
-            if (sessionStorage.getItem('bypassWelcome') === 'true') {
-                // Clear the flag
-                sessionStorage.removeItem('bypassWelcome');
-                
-                // Show navbar
-                if (navbar) {
-                    navbar.classList.remove('hidden');
-                }
-                
-                // Go directly to main YouTube app (bypass welcome screen)
-                this.setupEventListeners();
-                this.loadData();
-                
-                return;
-            }
-            
-            // Set up password verification
-            this.setupPasswordVerification();
+            // YouTube Explorer: Skip login but show mode selection (YouTube vs Local Archive)
+            this.showModeSelection();
             
             // Set up interactive gradient backgrounds
             this.setupInteractiveGradients();
@@ -92,173 +47,47 @@ class ArchiveExplorer {
         }
     }
 
-    /**
-     * Check if user is already logged in via cookie
-     */
-    checkExistingLogin() {
-        const loginCookie = this.getCookie('mmarchive_logged_in');
-        return loginCookie === 'true';
-    }
-
-    /**
-     * Set login cookie
-     */
-    setLoginCookie() {
-        const expiryDate = new Date();
-        expiryDate.setTime(expiryDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
-        document.cookie = `mmarchive_logged_in=true; expires=${expiryDate.toUTCString()}; path=/`;
-    }
-
-    /**
-     * Remove login cookie
-     */
-    removeLoginCookie() {
-        document.cookie = 'mmarchive_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
-    }
-
-    /**
-     * Get cookie value
-     */
-    getCookie(name) {
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for(let i = 0; i < ca.length; i++) {
-            let c = ca[i];
-            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-        }
-        return null;
-    }
-
-    /**
-     * Handle successful login
-     */
-    handleSuccessfulLogin() {
-        // Set login cookie
-        this.setLoginCookie();
-        
-        // Show navbar
-        const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.classList.remove('hidden');
-        }
-        
-        // Fade out only the password modal content, keeping background
-        const passwordModal = document.getElementById('passwordModal');
-        const passwordContent = passwordModal.querySelector('.password-modal-content');
-        if (passwordContent) {
-            passwordContent.style.transition = 'opacity 0.5s ease-out';
-            passwordContent.style.opacity = '0';
-        }
-        
-        setTimeout(() => {
-            // Show mode selection after fade completes
-            this.showModeSelection();
-        }, 500);
-    }
-
-    /**
-     * Set up password verification
-     */
-    setupPasswordVerification() {
-        const passwordForm = document.getElementById('passwordForm');
-        const passwordInput = document.getElementById('passwordInput');
-        const passwordError = document.getElementById('passwordError');
-        const passwordModal = document.getElementById('passwordModal');
-
-        // Check if already logged in and not bypassing welcome
-        if (this.checkExistingLogin() && sessionStorage.getItem('bypassWelcome') !== 'true') {
-            this.handleSuccessfulLogin();
-            return;
-        }
-        
-        // Handle password form submission
-        passwordForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const password = passwordInput.value;
-            const correctPassword = 'mmwelcome';
-            const submitBtn = document.getElementById('passwordSubmitBtn');
-            const submitContent = submitBtn.querySelector('.submit-content');
-            const loadingContent = submitBtn.querySelector('.loading-content');
-            
-            // Show loading state
-            submitBtn.disabled = true;
-            submitContent.style.display = 'none';
-            loadingContent.style.display = 'flex';
-            loadingContent.style.alignItems = 'center';
-            loadingContent.style.justifyContent = 'center';
-            
-            // Simulate brief loading period
-            setTimeout(() => {
-                if (password === correctPassword) {
-                    this.handleSuccessfulLogin();
-                } else {
-                    // Reset button state
-                    submitBtn.disabled = false;
-                    submitContent.style.display = 'block';
-                    loadingContent.style.display = 'none';
-                    
-                    // Show error message
-                    passwordError.style.display = 'block';
-                    passwordInput.value = '';
-                    passwordInput.focus();
-                    
-                    // Hide error after 3 seconds
-                    setTimeout(() => {
-                        passwordError.style.display = 'none';
-                    }, 3000);
-                }
-            }, 800); // Brief loading delay
-        });
-        
-        // Focus on password input
-        passwordInput.focus();
-    }
-
+    // YouTube-only version: Login/password methods removed
     /**
      * Set up interactive gradient backgrounds
      */
     setupInteractiveGradients() {
-        const passwordModal = document.getElementById('passwordModal');
         const directoryModal = document.getElementById('directorySelectionModal');
         
-        // Add mouse movement listeners to both modals
-        [passwordModal, directoryModal].forEach(modal => {
-            if (modal) {
-                modal.addEventListener('mousemove', (e) => {
-                    // Subtle movement of gradient spheres
-                    const spheres = modal.querySelectorAll('.gradient-sphere');
-                    const moveX = (e.clientX / window.innerWidth - 0.5) * 5;
-                    const moveY = (e.clientY / window.innerHeight - 0.5) * 5;
-                    
-                    spheres.forEach((sphere, index) => {
-                        const multiplier = (index + 1) * 0.3; // Different movement for each sphere
-                        sphere.style.transform = `translate(${moveX * multiplier}px, ${moveY * multiplier}px)`;
-                    });
+        // Add mouse movement listeners to the modal
+        if (directoryModal) {
+            directoryModal.addEventListener('mousemove', (e) => {
+                // Subtle movement of gradient spheres
+                const spheres = directoryModal.querySelectorAll('.gradient-sphere');
+                const moveX = (e.clientX / window.innerWidth - 0.5) * 5;
+                const moveY = (e.clientY / window.innerHeight - 0.5) * 5;
+                
+                spheres.forEach((sphere, index) => {
+                    const multiplier = (index + 1) * 0.3; // Different movement for each sphere
+                    sphere.style.transform = `translate(${moveX * multiplier}px, ${moveY * multiplier}px)`;
                 });
-            }
-        });
+            });
+        }
     }
 
     /**
      * Show mode selection modal
      */
     showModeSelection() {
-        const passwordModal = document.getElementById('passwordModal');
         const modal = document.getElementById('directorySelectionModal');
         const modeSelection = document.getElementById('modeSelection');
         const localArchiveSetup = document.getElementById('localArchiveSetup');
         
-        // Hide password modal completely
-        if (passwordModal) {
-            passwordModal.style.display = 'none';
-        }
-        
         // Show modal and mode selection
-        modal.style.display = 'flex';
-        modeSelection.style.display = 'block';
-        localArchiveSetup.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+        if (modeSelection) {
+            modeSelection.style.display = 'block';
+        }
+        if (localArchiveSetup) {
+            localArchiveSetup.style.display = 'none';
+        }
         
         // Reset any progress indicators
         this.hideAllProgressIndicators();
@@ -289,8 +118,8 @@ class ArchiveExplorer {
             directoryError.style.display = 'none';
         }
         
-        // Reset any loading buttons to normal state
-        const buttons = ['selectLocalArchiveBtn', 'selectYouTubeBtn', 'selectInstagramBtn', 'selectFacebookBtn'];
+        // Reset any loading buttons to normal state (only YouTube and Local Archive)
+        const buttons = ['selectLocalArchiveBtn', 'selectYouTubeBtn'];
         buttons.forEach(btnId => {
             const btn = document.getElementById(btnId);
             if (btn) {
@@ -306,8 +135,7 @@ class ArchiveExplorer {
     setupModeEventListeners() {
         const selectLocalArchiveBtn = document.getElementById('selectLocalArchiveBtn');
         const selectYouTubeBtn = document.getElementById('selectYouTubeBtn');
-        const selectInstagramBtn = document.getElementById('selectInstagramBtn');
-        const selectFacebookBtn = document.getElementById('selectFacebookBtn');
+        // Instagram and Facebook buttons removed
         const backToModeSelection = document.getElementById('backToModeSelection');
         const selectDirectoryBtn = document.getElementById('selectDirectoryBtn');
         const useLocalServerBtn = document.getElementById('useLocalServerBtn');
@@ -317,8 +145,7 @@ class ArchiveExplorer {
         // Make entire cards clickable
         const localArchiveCard = document.getElementById('localArchiveCard');
         const youtubeCard = document.getElementById('youtubeCard');
-        const instagramCard = document.getElementById('instagramCard');
-        const facebookCard = document.getElementById('facebookCard');
+        // Instagram and Facebook cards removed
         
         // Local Archive Mode Selection (entire card clickable)
         if (localArchiveCard) {
@@ -352,37 +179,7 @@ class ArchiveExplorer {
             });
         }
         
-        // Instagram Mode Selection (entire card clickable)
-        if (instagramCard) {
-            instagramCard.addEventListener('click', (e) => {
-                // Prevent double-click if clicking on button
-                if (e.target.tagName === 'BUTTON') return;
-                this.handleInstagramModeSelection();
-            });
-        }
-        
-        if (selectInstagramBtn) {
-            selectInstagramBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent card click
-                this.handleInstagramModeSelection();
-            });
-        }
-        
-        // Facebook Mode Selection (entire card clickable)
-        if (facebookCard) {
-            facebookCard.addEventListener('click', (e) => {
-                // Prevent double-click if clicking on button
-                if (e.target.tagName === 'BUTTON') return;
-                this.handleFacebookModeSelection();
-            });
-        }
-        
-        if (selectFacebookBtn) {
-            selectFacebookBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent card click
-                this.handleFacebookModeSelection();
-            });
-        }
+        // Instagram and Facebook mode selection removed - YouTube Explorer only
         
         // Back to mode selection
         if (backToModeSelection) {

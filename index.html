@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MM Archive Explorer</title>
+    <title>MM YouTube Explorer</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff0000'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E">
     
     <!-- Bootstrap CSS -->
@@ -39,12 +39,9 @@
     <div class="titlebar">
         <div class="titlebar-content">
             <div class="titlebar-left">
-                <a href="#" id="home-globe" style="cursor: pointer; text-decoration: none; margin-right: 12px;" title="Return to Welcome Screen">
-                    <i class="fas fa-house" style="color: white; font-size: 1.2rem;"></i>
-                </a>
                 <div id="homeButton" style="display: flex; align-items: center; cursor: pointer;" onclick="goToMainView()">
                     <i class="bi bi-youtube" style="color: #ff0000; font-size: 2rem; margin-right: 12px;"></i>
-                    <h1>MM YouTube Archive Explorer</h1>
+                    <h1>MM YouTube Explorer</h1>
                 </div>
             </div>
             <div class="titlebar-center" id="channel-navigation">
@@ -69,30 +66,7 @@
         </div>
     </div>
 
-    <!-- App Drawer Sidebar -->
-    <div class="app-drawer" id="appDrawer">
-        <button class="app-drawer-toggle" id="drawerToggle">
-            <i class="fas fa-chevron-right"></i>
-        </button>
-        <div class="app-drawer-content">
-            <div class="app-drawer-apps">
-                <a href="#" class="app-drawer-icon active" onclick="goToMainView()" title="YouTube Explorer">
-                    <i class="bi bi-youtube" style="color: #ff0000;"></i>
-                </a>
-                <a href="othersocials/MMInstaArchive/MMArchiveExplorer/index.html" class="app-drawer-icon" title="Instagram Explorer">
-                    <i class="fab fa-instagram" style="background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
-                </a>
-                <a href="othersocials/MMFacebookExplorer/index.html" class="app-drawer-icon" title="Facebook Explorer">
-                    <i class="bi bi-facebook" style="color: #1877F2;"></i>
-                </a>
-            </div>
-            <div class="app-drawer-footer">
-                <button class="logout-icon" onclick="logoutUser()" title="Logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- App Drawer Sidebar Removed for YouTube-only version -->
 
     <!-- Loading Screen -->
     <div id="loadingScreen" class="loading-screen">
@@ -111,47 +85,10 @@
         </div>
     </div>
 
-    <!-- Password Protection Modal -->
-    <div id="passwordModal" class="password-modal" style="display: flex;">
-        <div class="gradient-background">
-            <div class="gradient-sphere sphere-1"></div>
-            <div class="gradient-sphere sphere-2"></div>
-            <div class="gradient-sphere sphere-3"></div>
-            <div class="glow"></div>
-            <div class="grid-overlay"></div>
-            <div class="noise-overlay"></div>
-        </div>
-        <canvas id="passwordNetworkCanvas" class="network-canvas"></canvas>
-        <div class="password-modal-content">
-            <div class="password-logo-container">
-                <i class="fas fa-globe" style="color: #ffd700; font-size: 3rem;"></i>
-            </div>
-            <h2 class="password-title">Welcome</h2>
-            <p class="password-subtitle">Please enter the access code to continue</p>
-            <form id="passwordForm" class="password-form">
-                <input type="password" id="passwordInput" class="password-input" placeholder="Enter password" autofocus>
-                <button type="submit" class="password-submit" id="passwordSubmitBtn">
-                    <span class="submit-content">
-                        <i class="fas fa-arrow-right"></i>
-                    </span>
-                    <span class="loading-content" style="display: none;">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </span>
-                </button>
-            </form>
-            <div id="passwordError" class="password-error" style="display: none;">
-                Incorrect password. Please try again.
-            </div>
-            <div class="password-footer">
-                Medical Medium Archive Explorer WebBeta v1.0 © 2025 QuietTools
-            </div>
-        </div>
-    </div>
+    <!-- Password Protection Modal Removed for YouTube-only version -->
 
     <!-- Welcome & Mode Selection Modal -->
-    <div id="directorySelectionModal" class="directory-modal" style="display: none;">
+    <div id="directorySelectionModal" class="directory-modal" style="display: flex;">
         <div class="gradient-background">
             <div class="gradient-sphere sphere-1"></div>
             <div class="gradient-sphere sphere-2"></div>
@@ -166,15 +103,15 @@
                 <div class="welcome-logo">
                     <i class="fas fa-globe text-warning" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="mt-3 mb-2">Medical Medium Archive Explorer</h3>
-                <p class="text-muted">Select an archive source to begin:</p>
+                <h3 class="mt-3 mb-2">Medical Medium YouTube Explorer</h3>
+                <p class="text-muted">Select a video source to begin:</p>
             </div>
             
             <div class="directory-modal-body">
                 <!-- Mode Selection -->
                 <div id="modeSelection" class="mode-selection">
-                    <div class="row g-3">
-                        <div class="col-md-3 col-6">
+                    <div class="row g-4 justify-content-center">
+                        <div class="col-md-5 col-sm-6">
                             <div class="mode-card clickable-card" id="youtubeCard">
                                 <div class="mode-icon">
                                     <i class="bi bi-youtube text-danger"></i>
@@ -185,7 +122,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-3 col-6">
+                        <div class="col-md-5 col-sm-6">
                             <div class="mode-card clickable-card" id="localArchiveCard">
                                 <div class="mode-icon position-relative">
                                     <i class="bi bi-folder-fill text-secondary"></i>
@@ -194,28 +131,6 @@
                                 <h5>YouTube Local Archive</h5>
                                 <button id="selectLocalArchiveBtn" class="btn btn-secondary btn-lg w-100">
                                     <i class="bi bi-folder-plus"></i> Select Folder
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="mode-card clickable-card" id="facebookCard">
-                                <div class="mode-icon">
-                                    <i class="bi bi-facebook" style="color: #1877F2;"></i>
-                                </div>
-                                <h5>Facebook</h5>
-                                <button id="selectFacebookBtn" class="btn btn-lg w-100" style="background-color: #1877F2; border-color: #1877F2; color: white;">
-                                    <i class="bi bi-facebook"></i> Begin
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="mode-card clickable-card" id="instagramCard">
-                                <div class="mode-icon">
-                                    <i class="bi bi-instagram" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
-                                </div>
-                                <h5>Instagram</h5>
-                                <button id="selectInstagramBtn" class="btn btn-lg w-100" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); border: none; color: white;">
-                                    <i class="bi bi-instagram"></i> Begin
                                 </button>
                             </div>
                         </div>
