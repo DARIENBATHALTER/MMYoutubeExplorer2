@@ -2071,7 +2071,7 @@ class ArchiveExplorer {
             const analytics = await this.generateChannelAnalytics();
             
             // Update analytics tiles
-            // document.getElementById('analyticsCommentsCount').textContent = this.formatNumber(analytics.totalComments); // Removed - element no longer exists in HTML
+            document.getElementById('analyticsCommentsCount').textContent = this.formatNumber(analytics.totalComments);
             document.getElementById('analyticsLikesCount').textContent = this.formatNumber(analytics.totalLikes);
             document.getElementById('analyticsUniqueCommenters').textContent = this.formatNumber(analytics.uniqueCommenters);
             document.getElementById('analyticsAvgLikes').textContent = this.formatNumber(analytics.avgLikes);
