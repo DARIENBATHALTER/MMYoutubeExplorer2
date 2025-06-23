@@ -348,13 +348,13 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: 600px;
+    max-width: 800px;
 }
 
 .titlebar-search {
     flex: 1;
     position: relative;
-    max-width: 400px;
+    max-width: 600px;
 }
 
 .titlebar-search input {
