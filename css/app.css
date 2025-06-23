@@ -1764,10 +1764,10 @@ body.drawer-open #app {
 
 /* Enhanced search section styling */
 .comment-search-section {
-    background: rgba(13, 110, 253, 0.05);
+    background: rgba(220, 53, 69, 0.05);
     border-radius: 8px;
     padding: 20px;
-    border: 2px solid rgba(13, 110, 253, 0.1);
+    border: 2px solid rgba(220, 53, 69, 0.1);
 }
 
 .search-results-info {
