@@ -28,6 +28,58 @@ class ArchiveExplorer {
     }
 
     /**
+     * Clean filename for matching - removes invalid filename characters
+     */
+    cleanFilename(name) {
+        return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Generate multiple file path patterns for a video
+     */
+    generateFilePatterns(video, directory, type, extension) {
+        const cleanTitle = this.cleanFilename(video.title);
+        const videoId = video.video_id;
+        const suffix = type ? `_${type}` : '';
+        
+        const patterns = [
+            `${cleanTitle}_${videoId}_en_auto${suffix}`,
+            `${cleanTitle}_${videoId}_en_manual${suffix}`,
+            `${cleanTitle}__${videoId}_en_auto${suffix}`,
+            `${cleanTitle}__${videoId}_en_manual${suffix}`,
+            `${videoId} ${cleanTitle}_${videoId}_en_auto${suffix}`,
+            `${videoId} ${cleanTitle}_${videoId}_en_manual${suffix}`,
+            `${videoId} ${cleanTitle}__${videoId}_en_auto${suffix}`,
+            `${videoId} ${cleanTitle}__${videoId}_en_manual${suffix}`,
+            `${videoId}_${cleanTitle}_en_auto${suffix}`,
+            `${videoId}_${cleanTitle}_en_manual${suffix}`
+        ];
+        
+        return patterns.map(pattern => `${directory}/${pattern}.${extension}`);
+    }
+
+    /**
+     * Generate multiple keyword key patterns for a video
+     */
+    generateKeywordPatterns(video) {
+        const cleanTitle = this.cleanFilename(video.title);
+        const videoId = video.video_id;
+        
+        return [
+            `${cleanTitle}_${videoId}_en_auto`,
+            `${cleanTitle}_${videoId}_en_manual`,
+            `${cleanTitle}__${videoId}_en_auto`,
+            `${cleanTitle}__${videoId}_en_manual`,
+            `${videoId} ${cleanTitle}_${videoId}_en_auto`,
+            `${videoId} ${cleanTitle}_${videoId}_en_manual`,
+            `${videoId} ${cleanTitle}__${videoId}_en_auto`,
+            `${videoId} ${cleanTitle}__${videoId}_en_manual`,
+            `${videoId}_${cleanTitle}_en_auto`,
+            `${videoId}_${cleanTitle}_en_manual`
+        ];
+    }
+
+    /**
      * Initialize the application
      */
     async initializeApp() {
@@ -794,6 +846,11 @@ class ArchiveExplorer {
             
             // Tab switching for both insights and content tabs
             document.addEventListener('click', (e) => {
+                // Skip if this is a Bootstrap collapse button to avoid interfering with collapse functionality
+                if (e.target.matches('[data-bs-toggle="collapse"]') || e.target.closest('[data-bs-toggle="collapse"]')) {
+                    return;
+                }
+                
                 if (e.target.matches('.analytics-tab[data-tab]')) {
                     e.preventDefault();
                     this.switchInsightTab(e.target.dataset.tab);
@@ -1356,11 +1413,8 @@ class ArchiveExplorer {
      */
     async loadTranscript(video) {
         try {
-            // Find matching transcript file based on video_id
-            const transcriptFiles = [
-                `data/subtitles/${video.title}_${video.video_id}_en_auto.txt`,
-                `data/subtitles/${video.title}_${video.video_id}_en_manual.txt`
-            ];
+            // Generate all possible transcript file patterns
+            const transcriptFiles = this.generateFilePatterns(video, 'data/subtitles', '', 'txt');
             
             let transcriptContent = null;
             for (const file of transcriptFiles) {
@@ -1368,6 +1422,7 @@ class ArchiveExplorer {
                     const response = await fetch(file);
                     if (response.ok) {
                         transcriptContent = await response.text();
+                        console.log(`✅ Found transcript: ${file}`);
                         break;
                     }
                 } catch (error) {
@@ -1379,6 +1434,7 @@ class ArchiveExplorer {
                 this.elements.videoTranscript.innerHTML = this.escapeHTML(transcriptContent);
             } else {
                 this.elements.videoTranscript.innerHTML = '<div class="text-muted">Transcript not available for this video.</div>';
+                console.warn(`❌ No transcript found for video: ${video.video_id} - ${video.title}`);
             }
         } catch (error) {
             console.error('Failed to load transcript:', error);
@@ -1391,11 +1447,8 @@ class ArchiveExplorer {
      */
     async loadSummary(video) {
         try {
-            // Find matching summary file based on video_id
-            const summaryFiles = [
-                `data/summaries/${video.title}_${video.video_id}_en_auto_summary.txt`,
-                `data/summaries/${video.title}_${video.video_id}_en_manual_summary.txt`
-            ];
+            // Generate all possible summary file patterns
+            const summaryFiles = this.generateFilePatterns(video, 'data/summaries', 'summary', 'txt');
             
             let summaryContent = null;
             for (const file of summaryFiles) {
@@ -1403,6 +1456,7 @@ class ArchiveExplorer {
                     const response = await fetch(file);
                     if (response.ok) {
                         summaryContent = await response.text();
+                        console.log(`✅ Found summary: ${file}`);
                         break;
                     }
                 } catch (error) {
@@ -1416,6 +1470,7 @@ class ArchiveExplorer {
                 this.elements.videoSummary.innerHTML = this.escapeHTML(cleanContent).replace(/\n/g, '<br>');
             } else {
                 this.elements.videoSummary.innerHTML = '<div class="text-muted">Summary not available for this video.</div>';
+                console.warn(`❌ No summary found for video: ${video.video_id} - ${video.title}`);
             }
         } catch (error) {
             console.error('Failed to load summary:', error);
@@ -1437,17 +1492,16 @@ class ArchiveExplorer {
                 this.keywordsCache = await response.json();
             }
             
-            // Find matching keywords based on video title and video_id
-            // Try multiple possible key patterns
-            const possibleKeys = [
-                `${video.title}_${video.video_id}_en_auto`,
-                `${video.title}_${video.video_id}_en_manual`
-            ];
+            // Generate all possible keyword key patterns
+            const possibleKeys = this.generateKeywordPatterns(video);
             
             let keywords = null;
+            let matchedKey = null;
             for (const key of possibleKeys) {
                 if (this.keywordsCache[key]) {
                     keywords = this.keywordsCache[key];
+                    matchedKey = key;
+                    console.log(`✅ Found keywords with key: ${key}`);
                     break;
                 }
             }
@@ -1459,6 +1513,8 @@ class ArchiveExplorer {
                 this.elements.videoKeywords.innerHTML = keywordTags;
             } else {
                 this.elements.videoKeywords.innerHTML = '<div class="text-muted">No keywords available for this video.</div>';
+                console.warn(`❌ No keywords found for video: ${video.video_id} - ${video.title}`);
+                console.log('Tried keys:', possibleKeys.slice(0, 3), '...');
             }
         } catch (error) {
             console.error('Failed to load keywords:', error);
@@ -1996,6 +2052,33 @@ class ArchiveExplorer {
     }
 
     /**
+     * Show loading toast notification
+     */
+    showLoadingToast(message, duration = 2000) {
+        // Remove any existing toasts
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'toast loading';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="bi bi-hourglass-split me-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Auto-remove toast
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    /**
      * Generate comment insights for current video
      */
     async generateCommentInsights() {
@@ -2393,26 +2476,29 @@ class ArchiveExplorer {
     }
 
     /**
-     * Analyze themes and topics
+     * Analyze themes and topics - Fixed version that counts each comment only once per theme
      */
     analyzeThemes(comments) {
         const themes = {
-            'Recipe Requests': { count: 0, keywords: ['recipe', 'how to make', 'ingredients', 'link'] },
-            'Health Questions': { count: 0, keywords: ['how long', 'dosage', 'how much', 'safe', 'pregnancy'] },
-            'Success Stories': { count: 0, keywords: ['helped', 'better', 'improved', 'healed', 'working', 'results'] },
-            'Protocol Questions': { count: 0, keywords: ['celery juice', 'heavy metal', 'detox', 'protocol', 'supplements'] },
-            'Gratitude': { count: 0, keywords: ['thank you', 'grateful', 'bless', 'saved my life', 'appreciate'] }
+            'Recipe Requests': { count: 0, keywords: ['recipe', 'how to make', 'ingredients', 'link', 'cook'] },
+            'Health Questions': { count: 0, keywords: ['how long', 'dosage', 'how much', 'safe', 'pregnancy', 'should i', 'can i'] },
+            'Success Stories': { count: 0, keywords: ['helped', 'better', 'improved', 'healed', 'working', 'results', 'cured', 'feeling great', 'amazing results'] },
+            'Protocol Questions': { count: 0, keywords: ['celery juice', 'heavy metal', 'detox', 'protocol', 'supplements', 'morning routine'] },
+            'Gratitude': { count: 0, keywords: ['thank you', 'grateful', 'bless', 'saved my life', 'appreciate', 'thankful', 'blessed', 'god bless', 'life saver', 'amazing', 'love you', 'incredible'] },
+            'Symptoms': { count: 0, keywords: ['pain', 'fatigue', 'brain fog', 'anxiety', 'depression', 'symptoms', 'sick', 'tired'] },
+            'Food & Nutrition': { count: 0, keywords: ['food', 'eat', 'diet', 'nutrition', 'meal', 'fruit', 'vegetable', 'organic'] },
+            'Healing Journey': { count: 0, keywords: ['journey', 'healing', 'recovery', 'progress', 'hope', 'faith', 'believe'] }
         };
         
         comments.forEach(comment => {
             const text = (comment.content || comment.text || '').toLowerCase();
             
+            // Count each comment only once per theme
             Object.keys(themes).forEach(theme => {
-                themes[theme].keywords.forEach(keyword => {
-                    if (text.includes(keyword)) {
-                        themes[theme].count++;
-                    }
-                });
+                const hasKeyword = themes[theme].keywords.some(keyword => text.includes(keyword));
+                if (hasKeyword) {
+                    themes[theme].count++;
+                }
             });
         });
         
@@ -2425,11 +2511,60 @@ class ArchiveExplorer {
     }
 
     /**
-     * Render themes analysis
+     * Render themes with descriptions for modal
+     */
+    renderThemesWithDescriptions(themesData) {
+        const container = document.getElementById('topThemes');
+        if (!container) return;
+        
+        const themeDescriptions = {
+            'Recipe Requests': 'Viewers asking for recipes, cooking instructions, and ingredient lists',
+            'Health Questions': 'Questions about dosages, safety, timing, and health protocols',
+            'Success Stories': 'Personal testimonials about healing and positive results',
+            'Protocol Questions': 'Inquiries about specific healing protocols and routines',
+            'Gratitude': 'Expressions of thanks, appreciation, and blessings',
+            'Symptoms': 'Discussions about health symptoms and conditions',
+            'Food & Nutrition': 'Topics related to diet, nutrition, and food choices',
+            'Healing Journey': 'Comments about personal healing journeys and progress'
+        };
+        
+        const html = `
+            <div class="themes-with-descriptions">
+                ${themesData.length > 0 ? themesData.map(({ theme, count }) => `
+                    <div class="theme-item-detailed mb-3">
+                        <div class="theme-header d-flex justify-content-between align-items-center">
+                            <div class="theme-name fw-bold">${theme}</div>
+                            <div class="theme-count badge bg-secondary">${count} comments</div>
+                        </div>
+                        <div class="theme-description text-muted small mt-1">
+                            ${themeDescriptions[theme] || 'Common discussion theme in comments'}
+                        </div>
+                        <div class="theme-bar mt-2">
+                            <div class="theme-bar-fill bg-primary" style="width: ${(count / themesData[0].count) * 100}%; height: 4px; border-radius: 2px;"></div>
+                        </div>
+                    </div>
+                `).join('') : '<div class="text-muted">No theme data available</div>'}
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render themes analysis for tabbed interface
      */
     renderThemesAnalysis(themesData) {
-        const container = document.getElementById('themesAnalysis');
-        if (!container) return;
+        // Try both possible container IDs (video detail view uses 'themesAnalysis', modal uses 'topThemes')
+        let container = document.getElementById('themesAnalysis');
+        if (!container) {
+            container = document.getElementById('topThemes');
+        }
+        if (!container) {
+            console.warn('❌ Theme analysis container not found (tried themesAnalysis and topThemes)');
+            return;
+        }
+        
+        console.log('🎯 Rendering themes analysis:', themesData);
         
         if (themesData.length === 0) {
             container.innerHTML = '<div class="text-muted">No theme data available</div>';
@@ -2437,10 +2572,21 @@ class ArchiveExplorer {
         }
         
         const html = themesData.map(({ theme, count }) => {
-            return `<span class="theme-item" title="${count} mentions">${theme} (${count})</span>`;
-        }).join(' ');
+            return `
+                <div class="theme-item">
+                    <div class="theme-label">
+                        <span class="theme-name">${theme}</span>
+                        <span class="theme-count">${count} comments</span>
+                    </div>
+                    <div class="theme-bar">
+                        <div class="theme-bar-fill" style="width: ${(count / themesData[0].count) * 100}%;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
         
         container.innerHTML = html;
+        console.log(`✅ Rendered ${themesData.length} themes`);
     }
 
     /**
@@ -2511,6 +2657,9 @@ class ArchiveExplorer {
      * Show comment analytics modal
      */
     async showCommentAnalytics() {
+        // Show immediate loading toast
+        this.showLoadingToast('Loading comment analytics panel...');
+        
         const modal = new bootstrap.Modal(document.getElementById('commentAnalyticsModal'));
         const loadingDiv = document.getElementById('commentAnalyticsLoading');
         const contentDiv = document.getElementById('commentAnalyticsContent');
@@ -2548,7 +2697,10 @@ class ArchiveExplorer {
             
             // Render sentiment and theme analytics
             this.renderSentimentAnalysis(sentimentData);
-            this.renderThemeAnalysis(themeData);
+            this.renderThemesAnalysis(themeData);
+            
+            // Render themes with descriptions
+            this.renderThemesWithDescriptions(themeData);
             
             // Load all comments
             this.currentChannelCommentPagination = { page: 1, limit: 50 };
@@ -2638,46 +2790,6 @@ class ArchiveExplorer {
         return sentiments;
     }
 
-    /**
-     * Enhanced theme analysis with Medical Medium specific categories
-     */
-    async analyzeThemes(comments) {
-        const themes = {
-            'Recipe Requests': { count: 0, keywords: ['recipe', 'how to make', 'ingredients', 'cook'], color: '#28a745' },
-            'Health Questions': { count: 0, keywords: ['dosage', 'how much', 'how long', 'safe', 'pregnancy'], color: '#17a2b8' },
-            'Success Stories': { count: 0, keywords: ['helped', 'better', 'improved', 'healed', 'working', 'results', 'cured'], color: '#ffc107' },
-            'Protocol Questions': { count: 0, keywords: ['celery juice', 'heavy metal', 'detox', 'protocol', 'supplements'], color: '#fd7e14' },
-            'Gratitude': { count: 0, keywords: ['thank you', 'grateful', 'bless', 'saved my life', 'appreciate'], color: '#e83e8c' },
-            'Symptoms': { count: 0, keywords: ['pain', 'fatigue', 'brain fog', 'anxiety', 'depression', 'symptoms'], color: '#dc3545' },
-            'Food & Nutrition': { count: 0, keywords: ['food', 'eat', 'diet', 'nutrition', 'meal', 'fruit', 'vegetable'], color: '#20c997' },
-            'Liver Health': { count: 0, keywords: ['liver', 'detox', 'cleanse', 'morning cleanse'], color: '#6f42c1' }
-        };
-
-        const total = comments.length;
-
-        comments.forEach(comment => {
-            const text = (comment.content || comment.text || '').toLowerCase();
-            
-            Object.keys(themes).forEach(theme => {
-                const hasKeyword = themes[theme].keywords.some(keyword => 
-                    text.includes(keyword)
-                );
-                if (hasKeyword) {
-                    themes[theme].count++;
-                }
-            });
-        });
-
-        // Calculate percentages and sort by count
-        const themeArray = Object.keys(themes).map(name => ({
-            name,
-            count: themes[name].count,
-            color: themes[name].color,
-            percentage: total > 0 ? Math.round((themes[name].count / total) * 100) : 0
-        })).sort((a, b) => b.count - a.count);
-
-        return themeArray;
-    }
 
     /**
      * Render sentiment analysis visualization
@@ -2751,50 +2863,6 @@ class ArchiveExplorer {
             `).join('');
     }
 
-    /**
-     * Render theme analysis visualization
-     */
-    renderThemeAnalysis(themeData) {
-        const chartContainer = document.getElementById('themeChart');
-        const themesContainer = document.getElementById('topThemes');
-
-        if (!chartContainer || !themesContainer) return;
-
-        // Create simple bar chart representation
-        const maxCount = themeData[0]?.count || 1;
-        
-        chartContainer.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-                <div style="font-size: 1.5rem; color: #333; margin-bottom: 0.5rem;">${themeData.length}</div>
-                <div style="color: #666;">Themes Detected</div>
-                <div style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
-                    Top: ${themeData[0]?.name || 'None'} (${themeData[0]?.count || 0})
-                </div>
-            </div>
-        `;
-
-        // Create theme breakdown
-        themesContainer.innerHTML = themeData
-            .slice(0, 8) // Show top 8 themes
-            .map((theme, index) => {
-                const barWidth = (theme.count / maxCount) * 100;
-                return `
-                    <div class="theme-item">
-                        <div class="theme-label">
-                            <span style="color: ${theme.color};">●</span>
-                            <span>${theme.name}</span>
-                        </div>
-                        <div class="theme-stats">
-                            <span class="theme-count">${theme.count}</span>
-                            <span class="theme-percentage">${theme.percentage}%</span>
-                        </div>
-                    </div>
-                    <div class="progress mb-2" style="height: 4px;">
-                        <div class="progress-bar" style="width: ${barWidth}%; background-color: ${theme.color};"></div>
-                    </div>
-                `;
-            }).join('');
-    }
 
     /**
      * Generate channel analytics data
@@ -3200,11 +3268,13 @@ class ArchiveExplorer {
 
                     // Categorize keywords
                     const category = this.categorizeKeyword(keyword);
-                    if (!categoryStats.has(category)) {
-                        categoryStats.set(category, { count: 0, keywords: new Set() });
+                    if (category !== null) { // Only process categorized keywords
+                        if (!categoryStats.has(category)) {
+                            categoryStats.set(category, { count: 0, keywords: new Set() });
+                        }
+                        categoryStats.get(category).count++;
+                        categoryStats.get(category).keywords.add(cleanKeyword);
                     }
-                    categoryStats.get(category).count++;
-                    categoryStats.get(category).keywords.add(cleanKeyword);
                 }
             }
         }
@@ -3282,7 +3352,7 @@ class ArchiveExplorer {
         } else if (k.includes('spiritual') || k.includes('meditation') || k.includes('soul') || k.includes('angel')) {
             return 'Spiritual & Mindfulness';
         } else {
-            return 'General Health';
+            return null; // Don't categorize keywords that don't match specific patterns
         }
     }
 
@@ -3430,8 +3500,7 @@ class ArchiveExplorer {
             'Supplements & Herbs': 'bi-capsule',
             'Healing & Detox': 'bi-arrow-repeat',
             'Symptoms & Conditions': 'bi-thermometer-half',
-            'Spiritual & Mindfulness': 'bi-peace',
-            'General Health': 'bi-shield-plus'
+            'Spiritual & Mindfulness': 'bi-peace'
         };
 
         categories.sort((a, b) => b.count - a.count).forEach(category => {

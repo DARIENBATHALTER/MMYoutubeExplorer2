@@ -1343,6 +1343,38 @@ body.drawer-open #app {
     font-size: 1.2rem;
 }
 
+/* Loading Toast */
+.toast.loading {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    color: white;
+    border: none;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(23, 162, 184, 0.3);
+    opacity: 0;
+    animation: slideInUp 0.3s ease forwards;
+    z-index: 10000;
+}
+
+.toast.loading .toast-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toast.loading i {
+    font-size: 1.2rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* Mode Badge Fixes */
 .mode-badge {
     display: inline-flex;
@@ -1714,7 +1746,6 @@ body.drawer-open #app {
     font-weight: 600;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 2px solid var(--border-color);
 }
 
 .word-cloud {
@@ -2083,7 +2114,6 @@ body.drawer-open #app {
     font-weight: 600;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #f8f9fa;
 }
 
 .section-title i {
@@ -2262,8 +2292,6 @@ body.drawer-open #app {
 }
 
 .sentiment-breakdown, .top-themes {
-    max-height: 300px;
-    overflow-y: auto;
     padding: 0;
 }
 
@@ -2394,6 +2422,127 @@ body.drawer-open #app {
 
 .btn[data-bs-toggle="collapse"][aria-expanded="true"] i {
     transform: rotate(180deg);
+}
+
+/* Unified Analytics Tabbed Interface */
+.unified-analytics .analytics-section {
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+    overflow: hidden;
+}
+
+.unified-analytics .nav-tabs {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    margin: 0;
+    padding: 0 1rem;
+}
+
+.unified-analytics .nav-tabs .nav-item {
+    margin-bottom: 0;
+}
+
+.unified-analytics .nav-tabs .nav-link {
+    border: none;
+    border-radius: 0;
+    padding: 1rem 1.5rem;
+    color: #6c757d;
+    font-weight: 500;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.unified-analytics .nav-tabs .nav-link:hover {
+    border-color: transparent;
+    background: rgba(220, 53, 69, 0.05);
+    color: #dc3545;
+}
+
+.unified-analytics .nav-tabs .nav-link.active {
+    background: white;
+    color: #dc3545;
+    border-bottom-color: #dc3545;
+    font-weight: 600;
+}
+
+.unified-analytics .nav-tabs .nav-link i {
+    margin-right: 0.5rem;
+}
+
+.unified-analytics .tab-content {
+    background: white;
+}
+
+.unified-analytics .tab-content-padding {
+    padding: 1.5rem;
+}
+
+.unified-analytics .tab-header {
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.unified-analytics .tab-header h6 {
+    color: #333;
+    font-weight: 600;
+    margin: 0;
+}
+
+.unified-analytics .tab-header small {
+    color: #6c757d;
+}
+
+/* Theme Analysis Styling for Tabbed Interface */
+.unified-analytics .theme-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0.5rem;
+}
+
+.unified-analytics .theme-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.unified-analytics .theme-label {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.unified-analytics .theme-name {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.unified-analytics .theme-count {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.unified-analytics .theme-bar {
+    flex: 0 0 120px;
+    height: 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    margin-left: 1rem;
+    overflow: hidden;
+}
+
+.unified-analytics .theme-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #dc3545, #fd7e14);
+    border-radius: 4px;
+    transition: width 0.3s ease;
 }
 
 /* List View Styles */

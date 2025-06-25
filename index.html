@@ -488,11 +488,8 @@
                             <button class="btn btn-sm btn-outline-secondary analytics-tab" data-tab="liked">
                                 <i class="bi bi-heart"></i> Liked
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary analytics-tab" data-tab="sentiment">
-                                <i class="bi bi-emoji-smile"></i> Sentiment
-                            </button>
                             <button class="btn btn-sm btn-outline-secondary analytics-tab" data-tab="themes">
-                                <i class="bi bi-tags"></i> Themes
+                                <i class="bi bi-tags"></i> Themes/Sentiment
                             </button>
                         </div>
                         
@@ -513,18 +510,11 @@
                                 <div id="analyticsLikedWords" class="analytics-liked-words"></div>
                             </div>
                             
-                            <div id="sentimentTab" class="insight-tab tab-pane" style="display: none;">
-                                <div class="tab-header">
-                                    <h6>Comment Sentiment</h6>
-                                    <small class="text-muted">Emotional tone analysis</small>
-                                </div>
-                                <div id="sentimentAnalysis" class="sentiment-analysis"></div>
-                            </div>
                             
                             <div id="themesTab" class="insight-tab tab-pane" style="display: none;">
                                 <div class="tab-header">
-                                    <h6>Top Themes</h6>
-                                    <small class="text-muted">Common topics and patterns</small>
+                                    <h6>Themes & Sentiment</h6>
+                                    <small class="text-muted">Common topics and emotional tone</small>
                                 </div>
                                 <div id="themesAnalysis" class="themes-analysis"></div>
                             </div>
@@ -723,74 +713,68 @@
                         </div>
                     </div>
 
-                    <!-- Word Analytics (Collapsible) -->
-                    <div class="word-analytics mb-4">
-                        <button class="btn btn-outline-secondary btn-sm mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#wordAnalyticsCollapse" aria-expanded="false" aria-controls="wordAnalyticsCollapse">
-                            <i class="bi bi-chevron-right"></i> <i class="bi bi-cloud"></i> Word Analytics
-                        </button>
-                        <div class="collapse" id="wordAnalyticsCollapse">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="analytics-section">
-                                        <h6><i class="bi bi-star"></i> Most Liked Words</h6>
-                                        <div id="mostLikedWords" class="word-cloud word-cloud-small">
+                    <!-- Unified Analytics Tabbed Interface -->
+                    <div class="unified-analytics mb-4">
+                        <div class="analytics-section">
+                            <!-- Tab Navigation -->
+                            <ul class="nav nav-tabs" id="analyticsTabsNav" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="liked-words-tab" data-bs-toggle="tab" data-bs-target="#liked-words-pane" type="button" role="tab" aria-controls="liked-words-pane" aria-selected="true">
+                                        <i class="bi bi-star"></i> Most Liked Words
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="frequent-words-tab" data-bs-toggle="tab" data-bs-target="#frequent-words-pane" type="button" role="tab" aria-controls="frequent-words-pane" aria-selected="false">
+                                        <i class="bi bi-cloud"></i> Most Frequent Words
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="themes-tab" data-bs-toggle="tab" data-bs-target="#themes-pane" type="button" role="tab" aria-controls="themes-pane" aria-selected="false">
+                                        <i class="bi bi-tags"></i> Themes/Sentiment
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="analyticsTabsContent">
+                                <!-- Most Liked Words Tab -->
+                                <div class="tab-pane fade show active" id="liked-words-pane" role="tabpanel" aria-labelledby="liked-words-tab">
+                                    <div class="tab-content-padding">
+                                        <div class="tab-header mb-3">
+                                            <h6 class="mb-1">Most Liked Words</h6>
+                                            <small class="text-muted">Words from highest-liked comments</small>
+                                        </div>
+                                        <div id="mostLikedWords" class="word-cloud">
                                             <!-- Most liked words will be populated here -->
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="analytics-section">
-                                        <h6><i class="bi bi-cloud"></i> Most Frequent Words</h6>
-                                        <div id="mostFrequentWords" class="word-cloud word-cloud-small">
+
+                                <!-- Most Frequent Words Tab -->
+                                <div class="tab-pane fade" id="frequent-words-pane" role="tabpanel" aria-labelledby="frequent-words-tab">
+                                    <div class="tab-content-padding">
+                                        <div class="tab-header mb-3">
+                                            <h6 class="mb-1">Most Frequent Words</h6>
+                                            <small class="text-muted">Top words mentioned in comments</small>
+                                        </div>
+                                        <div id="mostFrequentWords" class="word-cloud">
                                             <!-- Most frequent words will be populated here -->
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Sentiment & Theme Analytics -->
-                    <div class="sentiment-theme-section mb-4">
-                        <!-- Sentiment Analysis Collapsible -->
-                        <div class="analytics-section mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="section-title mb-0">
-                                    <i class="bi bi-emoji-smile"></i> Comment Sentiment Analysis
-                                </h6>
-                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#sentimentCollapse" aria-expanded="false">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            </div>
-                            <div class="collapse" id="sentimentCollapse">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div id="sentimentChart" class="sentiment-chart">
-                                            <!-- Sentiment chart will be populated here -->
+
+                                <!-- Theme Analysis Tab -->
+                                <div class="tab-pane fade" id="themes-pane" role="tabpanel" aria-labelledby="themes-tab">
+                                    <div class="tab-content-padding">
+                                        <div class="tab-header mb-3">
+                                            <h6 class="mb-1">Themes & Sentiment Analysis</h6>
+                                            <small class="text-muted">Common topics, themes and emotional tone</small>
+                                        </div>
+                                        <div id="topThemes" class="top-themes">
+                                            <!-- Top themes will be populated here -->
                                         </div>
                                     </div>
-                                    <div class="col-md-8">
-                                        <div id="sentimentBreakdown" class="sentiment-breakdown">
-                                            <!-- Sentiment breakdown will be populated here -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Theme Analysis Collapsible -->
-                        <div class="analytics-section">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="section-title mb-0">
-                                    <i class="bi bi-tags"></i> Theme Analysis
-                                </h6>
-                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#themeCollapse" aria-expanded="false">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            </div>
-                            <div class="collapse" id="themeCollapse">
-                                <div id="topThemes" class="top-themes">
-                                    <!-- Top themes will be populated here -->
                                 </div>
                             </div>
                         </div>
@@ -865,6 +849,20 @@
 
                     <!-- Analytics Content -->
                     <div id="keywordAnalyticsContent" style="display: none;">
+                        <!-- Keyword Categories -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-collection"></i> Keyword Categories
+                                    </h6>
+                                    <div id="keywordCategories" class="categories-grid">
+                                        <!-- Categories will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Top Keywords and Performance -->
                         <div class="row mb-4">
                             <div class="col-md-6">
@@ -905,19 +903,6 @@
                             </div>
                         </div>
 
-                        <!-- Keyword Categories -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="analytics-section">
-                                    <h6 class="section-title">
-                                        <i class="bi bi-collection"></i> Keyword Categories
-                                    </h6>
-                                    <div id="keywordCategories" class="categories-grid">
-                                        <!-- Categories will be populated here -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Performance Insights -->
                         <div class="row mb-4">
