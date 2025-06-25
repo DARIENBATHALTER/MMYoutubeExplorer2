@@ -3676,6 +3676,107 @@ class ArchiveExplorer {
             const startTime = Date.now();
             this.showLoadingToast('Searching transcripts...');
             
+            // Try to use precomputed transcript index for fast search
+            const searchResults = await this.searchTranscriptsFromIndex(searchTerm);
+            
+            const endTime = Date.now();
+            const searchTime = ((endTime - startTime) / 1000).toFixed(2);
+            
+            // Hide loading state
+            loadingDiv.style.display = 'none';
+            
+            // Show success toast
+            const totalMatches = searchResults.reduce((sum, result) => sum + result.totalMatches, 0);
+            this.showSuccessToast(`Found ${totalMatches} matches in ${searchResults.length} videos (${searchTime}s)`);
+            
+            // Render results
+            this.renderTranscriptSearchResults(searchResults, searchTerm, searchTime);
+            
+        } catch (error) {
+            console.error('Transcript search error:', error);
+            loadingDiv.style.display = 'none';
+            
+            // Fallback to old method if index search fails
+            console.log('Falling back to file-by-file search...');
+            this.performTranscriptSearchFallback();
+        }
+    }
+
+    /**
+     * Fast transcript search using precomputed index
+     */
+    async searchTranscriptsFromIndex(searchTerm) {
+        // Load transcript index if not already loaded
+        if (!this.transcriptIndex) {
+            console.log('Loading transcript index...');
+            const response = await fetch('data/transcript_index.json');
+            if (!response.ok) {
+                throw new Error('Transcript index not found');
+            }
+            this.transcriptIndex = await response.json();
+            console.log(`Loaded transcript index: ${this.transcriptIndex.metadata.total_videos} videos, ${this.transcriptIndex.metadata.total_words.toLocaleString()} words`);
+        }
+
+        const searchResults = [];
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        
+        // Use word index for faster initial filtering
+        const candidateVideoIds = new Set();
+        
+        // Check if any indexed words match our search term
+        const searchWords = lowerSearchTerm.split(/\s+/).filter(word => word.length >= 3);
+        for (const word of searchWords) {
+            if (this.transcriptIndex.word_index[word]) {
+                this.transcriptIndex.word_index[word].forEach(videoId => candidateVideoIds.add(videoId));
+            }
+        }
+        
+        // If no word matches found, do full text search on all transcripts
+        if (candidateVideoIds.size === 0) {
+            Object.keys(this.transcriptIndex.transcripts).forEach(videoId => candidateVideoIds.add(videoId));
+        }
+        
+        // Search through candidate videos
+        for (const videoId of candidateVideoIds) {
+            const transcriptData = this.transcriptIndex.transcripts[videoId];
+            if (!transcriptData) continue;
+            
+            const excerpts = this.findTextExcerpts(transcriptData.text, searchTerm);
+            if (excerpts.length > 0) {
+                // Find corresponding video object
+                const video = this.dataManager.videos.find(v => v.video_id === videoId);
+                if (video) {
+                    searchResults.push({
+                        video: video,
+                        excerpts: excerpts,
+                        totalMatches: excerpts.length
+                    });
+                }
+            }
+        }
+        
+        // Sort results by relevance (number of matches)
+        searchResults.sort((a, b) => b.totalMatches - a.totalMatches);
+        
+        return searchResults;
+    }
+
+    /**
+     * Fallback transcript search method (original slow implementation)
+     */
+    async performTranscriptSearchFallback() {
+        const searchInput = document.getElementById('transcriptSearchInput');
+        const searchTerm = searchInput.value.trim();
+        const loadingDiv = document.getElementById('transcriptSearchLoading');
+        const resultsDiv = document.getElementById('transcriptSearchResults');
+        
+        loadingDiv.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        try {
+            const startTime = Date.now();
+            this.showLoadingToast('Searching transcripts (fallback method)...');
+            
             // Get all videos directly from data manager (not paginated)
             const videos = this.dataManager.videos;
             
