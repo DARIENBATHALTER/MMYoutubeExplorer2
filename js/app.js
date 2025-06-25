@@ -3244,7 +3244,7 @@ class ArchiveExplorer {
                 totalUniqueKeywords: keywordStats.size,
                 videosWithKeywords: videosWithKeywords,
                 avgKeywordsPerVideo: videosWithKeywords > 0 ? Math.round(totalKeywords / videosWithKeywords * 10) / 10 : 0,
-                topKeywordFreq: topByFrequency.length > 0 ? topByFrequency[0].count : 0,
+                topHighImpactKeyword: highImpactKeywords.length > 0 ? highImpactKeywords[0].name : 'None',
                 highImpactCount: highImpactKeywords.length
             },
             topByFrequency: topByFrequency.slice(0, 40),
@@ -3330,7 +3330,7 @@ class ArchiveExplorer {
         document.getElementById('totalUniqueKeywords').textContent = data.summary.totalUniqueKeywords;
         document.getElementById('videosWithKeywords').textContent = data.summary.videosWithKeywords;
         document.getElementById('avgKeywordsPerVideo').textContent = data.summary.avgKeywordsPerVideo;
-        document.getElementById('topKeywordFreq').textContent = data.summary.topKeywordFreq;
+        document.getElementById('topHighImpactKeyword').textContent = data.summary.topHighImpactKeyword;
 
         // Word cloud
         this.generateWordCloud(data.topByFrequency);
