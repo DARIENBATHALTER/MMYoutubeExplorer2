@@ -1041,6 +1041,10 @@ class ArchiveExplorer {
                 search: this.elements.searchInput.value
             };
             
+            // Remove keyword filter from filters passed to DataManager
+            const dataManagerFilters = { ...filters };
+            delete dataManagerFilters.keyword;
+            
             // Add list view sorting to filters
             if (this.isListView) {
                 // Map list view sort fields to DataManager format
@@ -1054,21 +1058,37 @@ class ArchiveExplorer {
                 };
                 
                 const mappedField = sortFieldMap[this.listViewSort.field] || 'date';
-                filters.sortBy = `${mappedField}-${this.listViewSort.direction}`;
+                dataManagerFilters.sortBy = `${mappedField}-${this.listViewSort.direction}`;
             }
             
-            const result = await this.dataManager.getVideos(filters, this.currentPagination);
+            const result = await this.dataManager.getVideos(dataManagerFilters, this.currentPagination);
+            
+            // Apply keyword filtering if present
+            let finalVideos = result.videos;
+            if (this.currentFilters.keyword) {
+                finalVideos = result.videos.filter(video => {
+                    const keywords = this.getVideoKeywords(video.video_id);
+                    return keywords && keywords.some(k => k.toLowerCase().includes(this.currentFilters.keyword.toLowerCase()));
+                });
+            }
+            
+            // Create final result with keyword-filtered videos
+            const finalResult = {
+                ...result,
+                videos: finalVideos,
+                total: finalVideos.length
+            };
             
             // Render appropriate view
             if (this.isListView) {
-                this.renderVideoList(result.videos);
-                this.renderPagination(result, 'list');
+                this.renderVideoList(finalResult.videos);
+                this.renderPagination(finalResult, 'list');
             } else {
-                this.renderVideoGrid(result.videos);
-                this.renderPagination(result, 'grid');
+                this.renderVideoGrid(finalResult.videos);
+                this.renderPagination(finalResult, 'grid');
             }
             
-            // this.updateResultCount(result.total); // Removed - badge no longer exists in HTML
+            // this.updateResultCount(finalResult.total); // Removed - badge no longer exists in HTML
             this.updateChannelStats();
             
         } catch (error) {
@@ -1850,6 +1870,12 @@ class ArchiveExplorer {
         // If we're in video detail view, return to video grid first
         if (this.currentView === 'video-detail') {
             this.showVideoGrid();
+        }
+        
+        // Check if search input contains keyword filter, if not clear the keyword filter
+        const searchValue = this.elements.searchInput.value || '';
+        if (!searchValue.includes('keyword:"') && this.currentFilters.keyword) {
+            delete this.currentFilters.keyword;
         }
         
         this.currentPagination.page = 1;
@@ -3569,31 +3595,18 @@ class ArchiveExplorer {
         const modal = bootstrap.Modal.getInstance(document.getElementById('keywordAnalyticsModal'));
         if (modal) modal.hide();
 
-        // Filter videos that have this keyword
-        const videos = this.dataManager.videos || [];
-        const filteredVideos = videos.filter(video => {
-            const keywords = this.getVideoKeywords(video.video_id);
-            return keywords && keywords.some(k => k.toLowerCase().includes(keyword.toLowerCase()));
-        });
-
         // Update search input to show the filter
         const searchInput = this.elements.searchInput;
         if (searchInput) {
             searchInput.value = `keyword:"${keyword}"`;
         }
 
-        // Apply filter and render appropriate view
-        this.currentFilteredVideos = filteredVideos;
-        
-        // Render appropriate view
-        if (this.isListView) {
-            this.renderVideoList(filteredVideos);
-        } else {
-            this.renderVideoGrid(filteredVideos);
-        }
-        
-        // Update channel stats
-        this.updateChannelStats();
+        // Store the keyword filter in currentFilters
+        this.currentFilters.keyword = keyword;
+        this.currentPagination.page = 1; // Reset to first page
+
+        // Use loadVideoGrid to properly handle the filter with pagination and view switching
+        this.loadVideoGrid();
     }
 
     /**
