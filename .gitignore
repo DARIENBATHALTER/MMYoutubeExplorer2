@@ -36,4 +36,5 @@ __pycache__/
 *$py.class
 
 # Exclude any local server logs
-server.log 
+server.log data/comments.json
+data/*index.json
