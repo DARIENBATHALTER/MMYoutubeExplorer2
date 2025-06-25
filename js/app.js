@@ -813,7 +813,7 @@ class ArchiveExplorer {
             // Export progress close
             document.addEventListener('click', (e) => {
                 if (e.target.matches('.close-progress')) {
-                    this.hideExportProgress();
+                    this.handleExportProgressClose();
                 }
             });
 
@@ -1827,6 +1827,34 @@ class ArchiveExplorer {
      */
     hideExportProgress() {
         this.elements.exportProgress.style.display = 'none';
+    }
+
+    /**
+     * Handle export progress close button with cancellation warning
+     */
+    handleExportProgressClose() {
+        // Check if export is currently in progress
+        if (this.exportService.isExportInProgress()) {
+            // Show confirmation dialog
+            const confirmed = confirm(
+                "⚠️ Export in Progress\n\n" +
+                "Closing this window will cancel the current export operation. " +
+                "Any partial progress will be lost.\n\n" +
+                "Are you sure you want to cancel the export?"
+            );
+            
+            if (confirmed) {
+                // Cancel the export
+                this.exportService.cancelExport();
+                this.hideExportProgress();
+                this.showSuccess('Export cancelled by user', 2000);
+                console.log('🚫 Export cancelled by user');
+            }
+            // If not confirmed, do nothing (keep the progress window open)
+        } else {
+            // No export in progress, close normally
+            this.hideExportProgress();
+        }
     }
 
     /**

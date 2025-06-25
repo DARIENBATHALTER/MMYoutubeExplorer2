@@ -5,6 +5,7 @@
 class ExportService {
     constructor() {
         this.isExporting = false;
+        this.cancelled = false;
         this.exportProgress = {
             current: 0,
             total: 0,
@@ -129,6 +130,7 @@ class ExportService {
         }
 
         this.isExporting = true;
+        this.cancelled = false;
         
         try {
             // Get video info and comments
@@ -175,6 +177,7 @@ class ExportService {
 
         } finally {
             this.isExporting = false;
+            this.cancelled = false;
         }
     }
 
@@ -187,6 +190,7 @@ class ExportService {
         }
 
         this.isExporting = true;
+        this.cancelled = false;
         
         try {
             // Get all videos
@@ -211,6 +215,11 @@ class ExportService {
             const zipFiles = [];
 
             for (let videoIndex = 0; videoIndex < videos.length; videoIndex++) {
+                // Check for cancellation
+                if (this.cancelled) {
+                    throw new Error('Export cancelled by user');
+                }
+                
                 const video = videos[videoIndex];
                 
                 // Update progress for current video
@@ -263,6 +272,7 @@ class ExportService {
 
         } finally {
             this.isExporting = false;
+            this.cancelled = false;
         }
     }
 
@@ -276,6 +286,11 @@ class ExportService {
         console.log(`🚀 Generating ${totalBatches} fflate ZIP batches of ${batchSize} comments each`);
 
         for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            // Check for cancellation
+            if (this.cancelled) {
+                throw new Error('Export cancelled by user');
+            }
+            
             const startIndex = batchIndex * batchSize;
             const endIndex = Math.min(startIndex + batchSize, comments.length);
             const batchComments = comments.slice(startIndex, endIndex);
@@ -290,6 +305,11 @@ class ExportService {
                 const imageFiles = {};
                 
                 for (let i = 0; i < batchComments.length; i++) {
+                    // Check for cancellation in comment processing loop
+                    if (this.cancelled) {
+                        throw new Error('Export cancelled by user');
+                    }
+                    
                     const comment = batchComments[i];
                     const globalIndex = startIndex + i;
                     
@@ -1068,6 +1088,7 @@ class ExportService {
      * Cancel current export
      */
     cancelExport() {
+        this.cancelled = true;
         this.isExporting = false;
         this.exportProgress = {
             current: 0,
