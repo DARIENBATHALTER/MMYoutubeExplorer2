@@ -21,7 +21,8 @@ class CommentListComponent {
                 e.preventDefault();
                 const btn = e.target.closest('.export-btn');
                 const commentId = btn.dataset.commentId;
-                this.onCommentExport?.(commentId);
+                const format = btn.dataset.format || 'comment';
+                this.onCommentExport?.(commentId, format);
             }
         });
 
@@ -121,11 +122,19 @@ class CommentListComponent {
                             <div class="comment-date">${date}</div>
                         </div>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm export-btn" 
-                            data-comment-id="${comment.comment_id}"
-                            title="Export this comment as PNG">
-                        <i class="bi bi-download"></i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Export this comment">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item export-btn" href="#" data-comment-id="${comment.comment_id}" data-format="comment">
+                                <i class="bi bi-chat-text"></i> Comment Only
+                            </a></li>
+                            <li><a class="dropdown-item export-btn" href="#" data-comment-id="${comment.comment_id}" data-format="thumbnail">
+                                <i class="bi bi-image"></i> Thumbnail & Comment
+                            </a></li>
+                        </ul>
+                    </div>
                 </div>
                 <div class="comment-text">${this.highlightText(this.escapeHTML(comment.text))}</div>
                 <div class="comment-actions">
