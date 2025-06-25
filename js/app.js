@@ -15,6 +15,11 @@ class ArchiveExplorer {
         this.currentFilters = {};
         this.currentPagination = { page: 1, limit: 24 };
         this.currentCommentPagination = { page: 1, limit: 50 };
+        this.isListView = false;
+        this.listViewSort = { field: 'date', direction: 'desc' };
+        
+        // Cached data
+        this.keywordsCache = null;
         
         // UI elements
         this.elements = {};
@@ -44,6 +49,8 @@ class ArchiveExplorer {
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
             this.showError('Failed to load the archive. Please refresh the page.');
+            // Prevent infinite loop by not calling showModeSelection again
+            return;
         }
     }
 
@@ -545,11 +552,17 @@ class ArchiveExplorer {
             videoDetailView: 'videoDetailView',
             videoGrid: 'videoGrid',
             videoPagination: 'videoPagination',
+            videoListView: 'videoListView',
+            videoListBody: 'videoListBody',
+            videoListPagination: 'videoListPagination',
             videoTitle: 'videoTitle',
             videoDate: 'videoDate',
             videoViews: 'videoViews',
             videoCommentCount: 'videoCommentCount',
             videoDescription: 'videoDescription',
+            videoTranscript: 'videoTranscript',
+            videoSummary: 'videoSummary',
+            videoKeywords: 'videoKeywords',
             commentsList: 'commentsList',
             commentSearch: 'commentSearch',
             commentSort: 'commentSort',
@@ -693,17 +706,29 @@ class ArchiveExplorer {
             }
 
             // Export all videos
-            if (this.elements.exportAllVideos) {
-                this.elements.exportAllVideos.addEventListener('click', () => {
-                    this.exportAllVideosComments();
-                });
-            }
+            // Export All Videos button is now handled by the dropdown in HTML with onclick="window.app.exportAllVideos('comment')" or 'thumbnail'
 
             // Comment Analytics button
             const commentAnalyticsBtn = document.getElementById('commentAnalyticsBtn');
             if (commentAnalyticsBtn) {
                 commentAnalyticsBtn.addEventListener('click', () => {
                     this.showCommentAnalytics();
+                });
+            }
+
+            // Keyword Analytics button
+            const keywordAnalyticsBtn = document.getElementById('keywordAnalyticsBtn');
+            if (keywordAnalyticsBtn) {
+                keywordAnalyticsBtn.addEventListener('click', () => {
+                    this.showKeywordAnalytics();
+                });
+            }
+
+            // List View Toggle button
+            const listViewToggle = document.getElementById('listViewToggle');
+            if (listViewToggle) {
+                listViewToggle.addEventListener('click', () => {
+                    this.toggleListView();
                 });
             }
 
@@ -731,11 +756,12 @@ class ArchiveExplorer {
                     
                     const btn = e.target.closest('.export-btn');
                     const commentId = btn?.dataset?.commentId;
+                    const format = btn?.dataset?.format || 'comment';
                     
                     if (commentId) {
                         const comment = this.findCommentById(commentId);
                         if (comment) {
-                            this.exportSingleComment(comment);
+                            this.exportSingleComment(comment, format);
                         } else {
                             console.error('Comment not found:', commentId);
                             this.showError('Comment not found');
@@ -752,11 +778,12 @@ class ArchiveExplorer {
                     
                     const btn = e.target.closest('.export-comment-btn');
                     const commentId = btn?.dataset?.commentId;
+                    const format = btn?.dataset?.format || 'comment';
                     
                     if (commentId) {
                         const comment = this.findCommentById(commentId);
                         if (comment) {
-                            this.exportSingleComment(comment);
+                            this.exportSingleComment(comment, format);
                         } else {
                             console.error('Comment not found:', commentId);
                             this.showError('Comment not found');
@@ -765,11 +792,14 @@ class ArchiveExplorer {
                 }
             });
             
-            // Insights tab switching
+            // Tab switching for both insights and content tabs
             document.addEventListener('click', (e) => {
-                if (e.target.matches('[data-tab]')) {
+                if (e.target.matches('.analytics-tab[data-tab]')) {
                     e.preventDefault();
                     this.switchInsightTab(e.target.dataset.tab);
+                } else if (e.target.matches('.content-tab[data-tab]')) {
+                    e.preventDefault();
+                    this.switchContentTab(e.target.dataset.tab);
                 }
             });
 
@@ -810,6 +840,38 @@ class ArchiveExplorer {
                         appDrawer.classList.add('open');
                         document.body.classList.add('drawer-open');
                         drawerToggle.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                    }
+                });
+            }
+            
+            // Pagination event handlers (for both grid and list views)
+            if (this.elements.videoPagination) {
+                this.elements.videoPagination.addEventListener('click', (e) => {
+                    if (e.target.matches('[data-page]')) {
+                        e.preventDefault();
+                        this.currentPagination.page = parseInt(e.target.dataset.page);
+                        this.loadVideoGrid();
+                    }
+                });
+            }
+            
+            if (this.elements.videoListPagination) {
+                this.elements.videoListPagination.addEventListener('click', (e) => {
+                    if (e.target.matches('[data-page]')) {
+                        e.preventDefault();
+                        this.currentPagination.page = parseInt(e.target.dataset.page);
+                        this.loadVideoGrid();
+                    }
+                });
+            }
+            
+            // List view row click handlers
+            if (this.elements.videoListBody) {
+                this.elements.videoListBody.addEventListener('click', (e) => {
+                    const videoRow = e.target.closest('tr[data-video-id]');
+                    if (videoRow) {
+                        const videoId = videoRow.dataset.videoId;
+                        this.showVideoDetail(videoId);
                     }
                 });
             }
@@ -872,9 +934,33 @@ class ArchiveExplorer {
                 search: this.elements.searchInput.value
             };
             
+            // Add list view sorting to filters
+            if (this.isListView) {
+                // Map list view sort fields to DataManager format
+                const sortFieldMap = {
+                    'date': 'date',
+                    'views': 'views',
+                    'likes': 'views', // No likes field, use views as fallback
+                    'comments': 'comments',
+                    'title': 'title',
+                    'thumbnail': 'date' // No thumbnail sort, use date as fallback
+                };
+                
+                const mappedField = sortFieldMap[this.listViewSort.field] || 'date';
+                filters.sortBy = `${mappedField}-${this.listViewSort.direction}`;
+            }
+            
             const result = await this.dataManager.getVideos(filters, this.currentPagination);
-            this.renderVideoGrid(result.videos);
-            this.renderPagination(result);
+            
+            // Render appropriate view
+            if (this.isListView) {
+                this.renderVideoList(result.videos);
+                this.renderPagination(result, 'list');
+            } else {
+                this.renderVideoGrid(result.videos);
+                this.renderPagination(result, 'grid');
+            }
+            
             // this.updateResultCount(result.total); // Removed - badge no longer exists in HTML
             this.updateChannelStats();
             
@@ -1089,11 +1175,19 @@ class ArchiveExplorer {
         this.currentVideo = null;
         
         this.elements.videoDetailView.style.display = 'none';
-        this.elements.videoGridView.style.display = 'block';
+        
+        // Show the correct view based on current state
+        if (this.isListView) {
+            this.elements.videoGridView.style.display = 'none';
+            this.elements.videoListView.style.display = 'block';
+        } else {
+            this.elements.videoListView.style.display = 'none';
+            this.elements.videoGridView.style.display = 'block';
+        }
         
         // Show channel navigation tools, stats bar, and channel statistics
         document.getElementById('channel-navigation').style.display = 'flex';
-        this.elements.statsBar.style.display = 'block';
+        this.elements.statsBar.style.display = 'flex';
         const channelStats = document.getElementById('channelStats');
         if (channelStats) {
             channelStats.style.display = 'block';
@@ -1105,6 +1199,123 @@ class ArchiveExplorer {
         if (this.videoPlayer) {
             this.videoPlayer.destroy();
         }
+    }
+
+    /**
+     * Toggle between grid and list view
+     */
+    toggleListView() {
+        this.isListView = !this.isListView;
+        
+        // Update button text and icon
+        const toggleBtn = document.getElementById('listViewToggle');
+        if (toggleBtn) {
+            if (this.isListView) {
+                toggleBtn.innerHTML = '<i class="bi bi-grid-3x3-gap"></i> Grid View';
+                toggleBtn.title = 'Toggle Grid View';
+            } else {
+                toggleBtn.innerHTML = '<i class="bi bi-list-ul"></i> List View';
+                toggleBtn.title = 'Toggle List View';
+            }
+        }
+        
+        // Show/hide appropriate view
+        if (this.isListView) {
+            this.elements.videoGridView.style.display = 'none';
+            this.elements.videoListView.style.display = 'block';
+            this.setupListViewSorting();
+        } else {
+            this.elements.videoListView.style.display = 'none';
+            this.elements.videoGridView.style.display = 'block';
+        }
+        
+        // Reload data for current view
+        this.loadVideoGrid();
+    }
+
+    /**
+     * Setup list view column sorting
+     */
+    setupListViewSorting() {
+        const sortableHeaders = this.elements.videoListView.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortField = header.dataset.sort;
+                
+                // Toggle direction if same field, otherwise default to desc
+                if (this.listViewSort.field === sortField) {
+                    this.listViewSort.direction = this.listViewSort.direction === 'desc' ? 'asc' : 'desc';
+                } else {
+                    this.listViewSort.field = sortField;
+                    this.listViewSort.direction = 'desc';
+                }
+                
+                // Update visual indicators
+                this.updateSortIndicators();
+                
+                // Reload data with new sort
+                this.loadVideoGrid();
+            });
+        });
+    }
+
+    /**
+     * Update visual sort indicators
+     */
+    updateSortIndicators() {
+        const sortableHeaders = this.elements.videoListView.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+            header.classList.remove('sorted-asc', 'sorted-desc');
+            if (header.dataset.sort === this.listViewSort.field) {
+                header.classList.add(`sorted-${this.listViewSort.direction}`);
+            }
+        });
+    }
+
+    /**
+     * Render video list view
+     */
+    renderVideoList(videos) {
+        const html = videos.map(video => this.createVideoListRow(video)).join('');
+        this.elements.videoListBody.innerHTML = html;
+    }
+
+    /**
+     * Create video list row
+     */
+    createVideoListRow(video) {
+        const date = new Date(video.published_at).toLocaleDateString();
+        const views = this.formatNumber(video.view_count);
+        const likes = this.formatNumber(video.like_count || 0);
+        const comments = this.formatNumber(video.comment_count);
+        
+        return `
+            <tr data-video-id="${video.video_id}">
+                <td>
+                    <img class="list-video-thumbnail" 
+                         src="https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg" 
+                         alt="${this.escapeHTML(video.title)}"
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iNDUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2Y4ZjlmYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIFRodW1ibmFpbDwvdGV4dD48L3N2Zz4='">
+                </td>
+                <td>
+                    <div class="list-video-title" title="${this.escapeHTML(video.title)}">
+                        ${this.escapeHTML(video.title)}
+                    </div>
+                </td>
+                <td>
+                    <div class="list-video-date">${date}</div>
+                </td>
+                <td>
+                    <div class="list-video-stats">${views}</div>
+                </td>
+                <td>
+                    <div class="list-video-stats">${likes}</div>
+                </td>
+                <td>
+                    <div class="list-video-stats">${comments}</div>
+                </td>
+            </tr>
+        `;
     }
 
     /**
@@ -1123,6 +1334,138 @@ class ArchiveExplorer {
         // Preserve line breaks in description
         const description = video.description || 'No description available.';
         this.elements.videoDescription.innerHTML = this.escapeHTML(description).replace(/\n/g, '<br>');
+        
+        // Load additional content (transcript, summary, keywords)
+        this.loadVideoContent(video);
+    }
+
+    /**
+     * Load additional video content (transcript, summary, keywords)
+     */
+    async loadVideoContent(video) {
+        // Load transcript
+        this.loadTranscript(video);
+        
+        // Load summary
+        this.loadSummary(video);
+        
+        // Load keywords
+        this.loadKeywords(video);
+    }
+
+    /**
+     * Load video transcript
+     */
+    async loadTranscript(video) {
+        try {
+            // Find matching transcript file based on video_id
+            const transcriptFiles = [
+                `data/subtitles/${video.title}_${video.video_id}_en_auto.txt`,
+                `data/subtitles/${video.title}_${video.video_id}_en_manual.txt`
+            ];
+            
+            let transcriptContent = null;
+            for (const file of transcriptFiles) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        transcriptContent = await response.text();
+                        break;
+                    }
+                } catch (error) {
+                    // Continue to next file
+                }
+            }
+            
+            if (transcriptContent) {
+                this.elements.videoTranscript.innerHTML = this.escapeHTML(transcriptContent);
+            } else {
+                this.elements.videoTranscript.innerHTML = '<div class="text-muted">Transcript not available for this video.</div>';
+            }
+        } catch (error) {
+            console.error('Failed to load transcript:', error);
+            this.elements.videoTranscript.innerHTML = '<div class="text-muted">Error loading transcript.</div>';
+        }
+    }
+
+    /**
+     * Load video summary
+     */
+    async loadSummary(video) {
+        try {
+            // Find matching summary file based on video_id
+            const summaryFiles = [
+                `data/summaries/${video.title}_${video.video_id}_en_auto_summary.txt`,
+                `data/summaries/${video.title}_${video.video_id}_en_manual_summary.txt`
+            ];
+            
+            let summaryContent = null;
+            for (const file of summaryFiles) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        summaryContent = await response.text();
+                        break;
+                    }
+                } catch (error) {
+                    // Continue to next file
+                }
+            }
+            
+            if (summaryContent) {
+                // Remove the header line if it exists
+                const cleanContent = summaryContent.replace(/^Video:.*\n={40,}\n\n?/m, '');
+                this.elements.videoSummary.innerHTML = this.escapeHTML(cleanContent).replace(/\n/g, '<br>');
+            } else {
+                this.elements.videoSummary.innerHTML = '<div class="text-muted">Summary not available for this video.</div>';
+            }
+        } catch (error) {
+            console.error('Failed to load summary:', error);
+            this.elements.videoSummary.innerHTML = '<div class="text-muted">Error loading summary.</div>';
+        }
+    }
+
+    /**
+     * Load video keywords
+     */
+    async loadKeywords(video) {
+        try {
+            // Load keywords from cache or fetch from data/keywords.json
+            if (!this.keywordsCache) {
+                const response = await fetch('data/keywords.json');
+                if (!response.ok) {
+                    throw new Error('Keywords file not found');
+                }
+                this.keywordsCache = await response.json();
+            }
+            
+            // Find matching keywords based on video title and video_id
+            // Try multiple possible key patterns
+            const possibleKeys = [
+                `${video.title}_${video.video_id}_en_auto`,
+                `${video.title}_${video.video_id}_en_manual`
+            ];
+            
+            let keywords = null;
+            for (const key of possibleKeys) {
+                if (this.keywordsCache[key]) {
+                    keywords = this.keywordsCache[key];
+                    break;
+                }
+            }
+            
+            if (keywords && keywords.length > 0) {
+                const keywordTags = keywords.map(keyword => 
+                    `<span class="badge bg-primary me-1 mb-1" style="font-size: 0.8em;">${this.escapeHTML(keyword)}</span>`
+                ).join('');
+                this.elements.videoKeywords.innerHTML = keywordTags;
+            } else {
+                this.elements.videoKeywords.innerHTML = '<div class="text-muted">No keywords available for this video.</div>';
+            }
+        } catch (error) {
+            console.error('Failed to load keywords:', error);
+            this.elements.videoKeywords.innerHTML = '<div class="text-muted">Error loading keywords.</div>';
+        }
     }
 
     /**
@@ -1183,9 +1526,19 @@ class ArchiveExplorer {
                             <div class="comment-date">${date}</div>
                         </div>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm export-btn" data-comment-id="${comment.comment_id}">
-                        <i class="bi bi-download"></i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle export-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-comment-id="${comment.comment_id}">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item export-btn" href="#" data-comment-id="${comment.comment_id}" data-format="comment">
+                                <i class="bi bi-chat-text"></i> Comment Only
+                            </a></li>
+                            <li><a class="dropdown-item export-btn" href="#" data-comment-id="${comment.comment_id}" data-format="thumbnail">
+                                <i class="bi bi-image"></i> iPhone Screenshot
+                            </a></li>
+                        </ul>
+                    </div>
                 </div>
                 <div class="comment-text">${this.escapeHTML(comment.text)}</div>
                 <div class="comment-actions">
@@ -1211,9 +1564,19 @@ class ArchiveExplorer {
                                 <div class="comment-date">${new Date(reply.published_at).toLocaleDateString()}</div>
                             </div>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm export-btn" data-comment-id="${reply.comment_id}">
-                            <i class="bi bi-download"></i>
-                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary btn-sm dropdown-toggle export-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-comment-id="${reply.comment_id}">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item export-btn" href="#" data-comment-id="${reply.comment_id}" data-format="comment">
+                                    <i class="bi bi-chat-text"></i> Comment Only
+                                </a></li>
+                                <li><a class="dropdown-item export-btn" href="#" data-comment-id="${reply.comment_id}" data-format="thumbnail">
+                                    <i class="bi bi-image"></i> iPhone Screenshot
+                                </a></li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="comment-text">${this.escapeHTML(reply.text)}</div>
                     <div class="comment-actions">
@@ -1248,9 +1611,9 @@ class ArchiveExplorer {
     /**
      * Export single comment
      */
-    async exportSingleComment(comment) {
+    async exportSingleComment(comment, format = 'comment') {
         try {
-            console.log('💬 Starting single comment export for:', comment.comment_id);
+            console.log(`💬 Starting single comment export for: ${comment.comment_id} (format: ${format})`);
             
             this.showExportProgress('single');
             
@@ -1264,7 +1627,14 @@ class ArchiveExplorer {
             console.log('📊 Updating progress to 50%...');
             this.updateExportProgress({ current: 0.5, total: 1, status: 'Generating image...' }, 'single');
             
-            await this.exportService.exportSingleComment(comment, this.currentVideo?.title || '');
+            // Choose export method based on format
+            if (format === 'thumbnail') {
+                // Generate YouTube thumbnail URL from video_id since thumbnail_url doesn't exist in videos.json
+                const videoThumbnail = this.currentVideo ? `https://img.youtube.com/vi/${this.currentVideo.video_id}/maxresdefault.jpg` : '';
+                await this.exportService.exportSingleCommentWithThumbnail(comment, this.currentVideo?.title || '', videoThumbnail);
+            } else {
+                await this.exportService.exportSingleComment(comment, this.currentVideo?.title || '');
+            }
             
             // Update progress to show completion
             console.log('📊 Setting completion progress...');
@@ -1287,7 +1657,7 @@ class ArchiveExplorer {
     /**
      * Export all video comments
      */
-    async exportVideoComments() {
+    async exportVideoComments(format = 'comment') {
         if (!this.currentVideo) return;
         
         try {
@@ -1298,7 +1668,8 @@ class ArchiveExplorer {
                 this.dataManager,
                 (progress) => {
                     this.updateExportProgress(progress, 'single');
-                }
+                },
+                format
             );
             
             // Close overlay after successful export
@@ -1314,7 +1685,7 @@ class ArchiveExplorer {
     /**
      * Export comments for all videos
      */
-    async exportAllVideosComments() {
+    async exportAllVideos(format = 'comment') {
         try {
             this.showExportProgress('all');
             
@@ -1322,7 +1693,8 @@ class ArchiveExplorer {
                 this.dataManager,
                 (progress) => {
                     this.updateExportProgress(progress, 'all');
-                }
+                },
+                format
             );
             
             // Close overlay after successful export
@@ -1458,7 +1830,7 @@ class ArchiveExplorer {
     /**
      * Render pagination
      */
-    renderPagination(result) {
+    renderPagination(result, viewType = 'grid') {
         let html = '';
         const currentPage = result.page;
         const totalPages = result.totalPages;
@@ -1503,16 +1875,12 @@ class ArchiveExplorer {
             html += `<li class="page-item disabled"><span class="page-link">Next</span></li>`;
         }
         
-        this.elements.videoPagination.innerHTML = html;
-        
-        // Add click handlers
-        this.elements.videoPagination.addEventListener('click', (e) => {
-            if (e.target.matches('[data-page]')) {
-                e.preventDefault();
-                this.currentPagination.page = parseInt(e.target.dataset.page);
-                this.loadVideoGrid();
-            }
-        });
+        // Select appropriate pagination container
+        const paginationContainer = viewType === 'list' ? 
+            this.elements.videoListPagination : 
+            this.elements.videoPagination;
+            
+        paginationContainer.innerHTML = html;
     }
 
     /**
@@ -1773,12 +2141,68 @@ class ArchiveExplorer {
         const maxCount = wordFreq[0].count;
         const html = wordFreq.map(({ word, count }) => {
             const size = Math.min(5, Math.max(1, Math.ceil((count / maxCount) * 5)));
-            return `<span class="word-item size-${size}" title="${count} occurrences">
+            return `<span class="word-item size-${size} clickable-word" 
+                          title="${count} occurrences - Click to filter comments"
+                          data-word="${this.escapeHTML(word)}"
+                          onclick="window.app.filterCommentsByWord('${this.escapeHTML(word)}')">
                 ${word} <span class="word-count">${count}</span>
             </span>`;
         }).join('');
 
         this.elements.wordCloud.innerHTML = html;
+    }
+
+    /**
+     * Filter comments by clicked word and scroll to comments section
+     */
+    filterCommentsByWord(word) {
+        try {
+            // Set the search input to the clicked word
+            const commentSearch = document.getElementById('commentSearch');
+            if (commentSearch) {
+                commentSearch.value = word;
+                
+                // Trigger the search
+                const searchEvent = new Event('input', { bubbles: true });
+                commentSearch.dispatchEvent(searchEvent);
+            }
+            
+            // Scroll to comments section
+            const commentsSection = document.querySelector('.comments-section');
+            if (commentsSection) {
+                commentsSection.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+            
+            console.log(`🔍 Filtering comments by word: "${word}"`);
+            
+        } catch (error) {
+            console.error('Failed to filter comments by word:', error);
+        }
+    }
+
+    /**
+     * Filter channel comments by clicked word in analytics modal
+     */
+    filterChannelCommentsByWord(word) {
+        try {
+            // Set the channel search input to the clicked word
+            const channelCommentSearch = document.getElementById('channelCommentSearch');
+            if (channelCommentSearch) {
+                channelCommentSearch.value = word;
+                
+                // Trigger the search
+                const searchEvent = new Event('input', { bubbles: true });
+                channelCommentSearch.dispatchEvent(searchEvent);
+            }
+            
+            console.log(`🔍 Filtering channel comments by word: "${word}"`);
+            
+        } catch (error) {
+            console.error('Failed to filter channel comments by word:', error);
+        }
     }
 
     /**
@@ -1812,6 +2236,29 @@ class ArchiveExplorer {
 
         // Show/hide tab content
         document.querySelectorAll('.tab-pane').forEach(tab => {
+            tab.classList.remove('active');
+            tab.style.display = 'none';
+        });
+
+        const targetTab = document.getElementById(`${tabName}Tab`);
+        if (targetTab) {
+            targetTab.classList.add('active');
+            targetTab.style.display = 'block';
+        }
+    }
+
+    /**
+     * Switch between content tabs (description, transcript, summary, keywords)
+     */
+    switchContentTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.content-tab').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`.content-tab[data-tab="${tabName}"]`).classList.add('active');
+
+        // Show/hide tab content
+        document.querySelectorAll('.content-tab-pane').forEach(tab => {
             tab.classList.remove('active');
             tab.style.display = 'none';
         });
@@ -2066,9 +2513,30 @@ class ArchiveExplorer {
      * Show comment analytics modal
      */
     async showCommentAnalytics() {
+        const modal = new bootstrap.Modal(document.getElementById('commentAnalyticsModal'));
+        const loadingDiv = document.getElementById('commentAnalyticsLoading');
+        const contentDiv = document.getElementById('commentAnalyticsContent');
+        const progressBar = document.getElementById('commentAnalyticsProgress');
+
+        // Show modal and loading state
+        modal.show();
+        loadingDiv.style.display = 'block';
+        contentDiv.style.display = 'none';
+
         try {
+            // Simulate progress updates
+            this.updateProgress(progressBar, 20);
+            
             // Generate analytics data
             const analytics = await this.generateChannelAnalytics();
+            this.updateProgress(progressBar, 60);
+            
+            // Generate sentiment and theme analytics
+            const sentimentData = await this.analyzeSentiment(analytics.allComments);
+            this.updateProgress(progressBar, 80);
+            
+            const themeData = await this.analyzeThemes(analytics.allComments);
+            this.updateProgress(progressBar, 100);
             
             // Update analytics tiles
             document.getElementById('analyticsCommentsCount').textContent = this.formatNumber(analytics.totalComments);
@@ -2079,6 +2547,10 @@ class ArchiveExplorer {
             // Update word clouds
             this.renderWordCloud('mostLikedWords', analytics.mostLikedWords);
             this.renderWordCloud('mostFrequentWords', analytics.mostFrequentWords);
+            
+            // Render sentiment and theme analytics
+            this.renderSentimentAnalysis(sentimentData);
+            this.renderThemeAnalysis(themeData);
             
             // Load all comments
             this.currentChannelCommentPagination = { page: 1, limit: 50 };
@@ -2092,17 +2564,238 @@ class ArchiveExplorer {
                 searchResultsElement.textContent = `${totalComments.toLocaleString()} comment${totalComments !== 1 ? 's' : ''} found`;
             }
             
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('commentAnalyticsModal'));
-            modal.show();
+            // Hide loading and show content
+            setTimeout(() => {
+                loadingDiv.style.display = 'none';
+                contentDiv.style.display = 'block';
+            }, 500);
             
             // Set up modal event listeners
             this.setupAnalyticsEventListeners();
             
         } catch (error) {
             console.error('Failed to show analytics:', error);
-            this.showError('Failed to load analytics data');
+            loadingDiv.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Unable to Generate Analytics</h5>
+                    <p class="text-muted">Failed to analyze comment data. Please try again.</p>
+                </div>
+            `;
         }
+    }
+
+    /**
+     * Update progress bar
+     */
+    updateProgress(progressBar, percentage) {
+        if (progressBar) {
+            progressBar.style.width = `${percentage}%`;
+            progressBar.setAttribute('aria-valuenow', percentage);
+        }
+    }
+
+    /**
+     * Analyze sentiment of comments
+     */
+    async analyzeSentiment(comments) {
+        const sentiments = {
+            positive: { count: 0, keywords: ['thank', 'grateful', 'amazing', 'love', 'perfect', 'wonderful', 'helped', 'better', 'healed', 'blessing'] },
+            negative: { count: 0, keywords: ['hate', 'bad', 'terrible', 'awful', 'horrible', 'disappointed', 'frustrated', 'angry', 'useless'] },
+            neutral: { count: 0, keywords: ['okay', 'fine', 'normal', 'average', 'standard'] },
+            grateful: { count: 0, keywords: ['thank you', 'grateful', 'blessed', 'appreciate', 'thankful', 'saved my life'] },
+            questioning: { count: 0, keywords: ['?', 'how', 'what', 'when', 'where', 'why', 'which', 'can you', 'please help'] }
+        };
+
+        const total = comments.length;
+        
+        comments.forEach(comment => {
+            const text = (comment.content || comment.text || '').toLowerCase();
+            let categorized = false;
+
+            // Check each sentiment category
+            Object.keys(sentiments).forEach(sentiment => {
+                if (!categorized) {
+                    const hasKeyword = sentiments[sentiment].keywords.some(keyword => 
+                        text.includes(keyword)
+                    );
+                    if (hasKeyword) {
+                        sentiments[sentiment].count++;
+                        categorized = true;
+                    }
+                }
+            });
+
+            // Default to neutral if not categorized
+            if (!categorized) {
+                sentiments.neutral.count++;
+            }
+        });
+
+        // Calculate percentages
+        Object.keys(sentiments).forEach(key => {
+            sentiments[key].percentage = total > 0 ? Math.round((sentiments[key].count / total) * 100) : 0;
+        });
+
+        return sentiments;
+    }
+
+    /**
+     * Enhanced theme analysis with Medical Medium specific categories
+     */
+    async analyzeThemes(comments) {
+        const themes = {
+            'Recipe Requests': { count: 0, keywords: ['recipe', 'how to make', 'ingredients', 'cook'], color: '#28a745' },
+            'Health Questions': { count: 0, keywords: ['dosage', 'how much', 'how long', 'safe', 'pregnancy'], color: '#17a2b8' },
+            'Success Stories': { count: 0, keywords: ['helped', 'better', 'improved', 'healed', 'working', 'results', 'cured'], color: '#ffc107' },
+            'Protocol Questions': { count: 0, keywords: ['celery juice', 'heavy metal', 'detox', 'protocol', 'supplements'], color: '#fd7e14' },
+            'Gratitude': { count: 0, keywords: ['thank you', 'grateful', 'bless', 'saved my life', 'appreciate'], color: '#e83e8c' },
+            'Symptoms': { count: 0, keywords: ['pain', 'fatigue', 'brain fog', 'anxiety', 'depression', 'symptoms'], color: '#dc3545' },
+            'Food & Nutrition': { count: 0, keywords: ['food', 'eat', 'diet', 'nutrition', 'meal', 'fruit', 'vegetable'], color: '#20c997' },
+            'Liver Health': { count: 0, keywords: ['liver', 'detox', 'cleanse', 'morning cleanse'], color: '#6f42c1' }
+        };
+
+        const total = comments.length;
+
+        comments.forEach(comment => {
+            const text = (comment.content || comment.text || '').toLowerCase();
+            
+            Object.keys(themes).forEach(theme => {
+                const hasKeyword = themes[theme].keywords.some(keyword => 
+                    text.includes(keyword)
+                );
+                if (hasKeyword) {
+                    themes[theme].count++;
+                }
+            });
+        });
+
+        // Calculate percentages and sort by count
+        const themeArray = Object.keys(themes).map(name => ({
+            name,
+            count: themes[name].count,
+            color: themes[name].color,
+            percentage: total > 0 ? Math.round((themes[name].count / total) * 100) : 0
+        })).sort((a, b) => b.count - a.count);
+
+        return themeArray;
+    }
+
+    /**
+     * Render sentiment analysis visualization
+     */
+    renderSentimentAnalysis(sentimentData) {
+        const chartContainer = document.getElementById('sentimentChart');
+        const breakdownContainer = document.getElementById('sentimentBreakdown');
+
+        if (!chartContainer || !breakdownContainer) return;
+
+        // Create sentiment circle chart
+        const total = Object.values(sentimentData).reduce((sum, item) => sum + item.count, 0);
+        let cumulativeDegrees = 0;
+        const gradientStops = [];
+
+        const sentimentColors = {
+            positive: '#28a745',
+            grateful: '#ffc107', 
+            neutral: '#6c757d',
+            questioning: '#17a2b8',
+            negative: '#dc3545'
+        };
+
+        Object.keys(sentimentData).forEach(sentiment => {
+            const percentage = sentimentData[sentiment].percentage;
+            const degrees = (percentage / 100) * 360;
+            
+            gradientStops.push(`${sentimentColors[sentiment]} ${cumulativeDegrees}deg ${cumulativeDegrees + degrees}deg`);
+            cumulativeDegrees += degrees;
+        });
+
+        chartContainer.innerHTML = `
+            <div class="sentiment-circle" style="background: conic-gradient(${gradientStops.join(', ')});">
+                <div class="sentiment-center">
+                    <div style="font-size: 1.5rem;">${total.toLocaleString()}</div>
+                    <div style="font-size: 0.8rem; color: #666;">Comments</div>
+                </div>
+            </div>
+        `;
+
+        // Create sentiment breakdown
+        const sentimentEmojis = {
+            positive: '😊',
+            grateful: '🙏',
+            neutral: '😐',
+            questioning: '❓',
+            negative: '😞'
+        };
+
+        const sentimentLabels = {
+            positive: 'Positive',
+            grateful: 'Grateful',
+            neutral: 'Neutral', 
+            questioning: 'Questioning',
+            negative: 'Negative'
+        };
+
+        breakdownContainer.innerHTML = Object.keys(sentimentData)
+            .sort((a, b) => sentimentData[b].count - sentimentData[a].count)
+            .map(sentiment => `
+                <div class="sentiment-item">
+                    <div class="sentiment-label">
+                        <span class="sentiment-emoji">${sentimentEmojis[sentiment]}</span>
+                        <span>${sentimentLabels[sentiment]}</span>
+                    </div>
+                    <div class="sentiment-stats">
+                        <span class="sentiment-count">${sentimentData[sentiment].count}</span>
+                        <span class="sentiment-percentage">${sentimentData[sentiment].percentage}%</span>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+    /**
+     * Render theme analysis visualization
+     */
+    renderThemeAnalysis(themeData) {
+        const chartContainer = document.getElementById('themeChart');
+        const themesContainer = document.getElementById('topThemes');
+
+        if (!chartContainer || !themesContainer) return;
+
+        // Create simple bar chart representation
+        const maxCount = themeData[0]?.count || 1;
+        
+        chartContainer.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <div style="font-size: 1.5rem; color: #333; margin-bottom: 0.5rem;">${themeData.length}</div>
+                <div style="color: #666;">Themes Detected</div>
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
+                    Top: ${themeData[0]?.name || 'None'} (${themeData[0]?.count || 0})
+                </div>
+            </div>
+        `;
+
+        // Create theme breakdown
+        themesContainer.innerHTML = themeData
+            .slice(0, 8) // Show top 8 themes
+            .map((theme, index) => {
+                const barWidth = (theme.count / maxCount) * 100;
+                return `
+                    <div class="theme-item">
+                        <div class="theme-label">
+                            <span style="color: ${theme.color};">●</span>
+                            <span>${theme.name}</span>
+                        </div>
+                        <div class="theme-stats">
+                            <span class="theme-count">${theme.count}</span>
+                            <span class="theme-percentage">${theme.percentage}%</span>
+                        </div>
+                    </div>
+                    <div class="progress mb-2" style="height: 4px;">
+                        <div class="progress-bar" style="width: ${barWidth}%; background-color: ${theme.color};"></div>
+                    </div>
+                `;
+            }).join('');
     }
 
     /**
@@ -2197,7 +2890,10 @@ class ArchiveExplorer {
         
         const html = words.map(({word, count}, index) => {
             const size = Math.max(0.65, 0.95 - (index / words.length) * 0.3); // Smaller size range
-            return `<span class="word-tag word-tag-small" style="font-size: ${size}rem;">
+            return `<span class="word-tag word-tag-small clickable-word" 
+                          style="font-size: ${size}rem; cursor: pointer;" 
+                          title="Click to filter comments containing '${this.escapeHTML(word)}'"
+                          onclick="window.app.filterChannelCommentsByWord('${this.escapeHTML(word)}')">
                 ${this.escapeHTML(word)} <span class="count">${this.formatNumber(count)}</span>
             </span>`;
         }).join('');
@@ -2237,12 +2933,21 @@ class ArchiveExplorer {
                                 <div class="comment-date">${date}</div>
                             </div>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm export-comment-btn" 
-                                data-comment-id="${comment.comment_id}" 
-                                data-video-title="${this.escapeHTML(comment.video_title)}"
-                                title="Export this comment as PNG">
-                            <i class="bi bi-download"></i>
-                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary btn-sm dropdown-toggle export-comment-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false" 
+                                    data-comment-id="${comment.comment_id}" 
+                                    data-video-title="${this.escapeHTML(comment.video_title)}">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item export-comment-btn" href="#" data-comment-id="${comment.comment_id}" data-video-title="${this.escapeHTML(comment.video_title)}" data-format="comment">
+                                    <i class="bi bi-chat-text"></i> Comment Only
+                                </a></li>
+                                <li><a class="dropdown-item export-comment-btn" href="#" data-comment-id="${comment.comment_id}" data-video-title="${this.escapeHTML(comment.video_title)}" data-format="thumbnail">
+                                    <i class="bi bi-image"></i> iPhone Screenshot
+                                </a></li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="comment-text">${this.escapeHTML(comment.text)}</div>
                     <div class="comment-actions">
@@ -2367,6 +3072,419 @@ class ArchiveExplorer {
         setTimeout(() => {
             this.showVideoDetail(videoId);
         }, 300);
+    }
+
+    /**
+     * Get keywords for a specific video
+     */
+    getVideoKeywords(videoId) {
+        try {
+            if (!this.keywordsCache) {
+                return null;
+            }
+
+            // Find the video first to get its title
+            const videos = this.dataManager.videos || [];
+            const video = videos.find(v => v.video_id === videoId);
+            if (!video) {
+                return null;
+            }
+
+            // Try multiple possible key patterns to match keywords
+            const possibleKeys = [
+                `${video.title}_${video.video_id}_en_auto`,
+                `${video.title}_${video.video_id}_en_manual`,
+                // Also try patterns without title cleanup
+                `${video.title.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()}_${video.video_id}_en_auto`,
+                `${video.title.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()}_${video.video_id}_en_manual`
+            ];
+
+            // Try to find keywords with any of these patterns
+            for (const key of possibleKeys) {
+                if (this.keywordsCache[key]) {
+                    return this.keywordsCache[key];
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error getting video keywords:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Show keyword analytics modal
+     */
+    async showKeywordAnalytics() {
+        const modal = new bootstrap.Modal(document.getElementById('keywordAnalyticsModal'));
+        const loadingDiv = document.getElementById('keywordAnalyticsLoading');
+        const contentDiv = document.getElementById('keywordAnalyticsContent');
+
+        // Show modal and loading state
+        modal.show();
+        loadingDiv.style.display = 'block';
+        contentDiv.style.display = 'none';
+
+        try {
+            // Load keywords cache if not already loaded
+            if (!this.keywordsCache) {
+                const response = await fetch('data/keywords.json');
+                if (!response.ok) {
+                    throw new Error('Keywords file not found');
+                }
+                this.keywordsCache = await response.json();
+            }
+
+            // Analyze keyword data
+            const analyticsData = await this.analyzeKeywordData();
+            
+            // Populate the analytics
+            this.populateKeywordAnalytics(analyticsData);
+            
+            // Show content
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+        } catch (error) {
+            console.error('Error generating keyword analytics:', error);
+            loadingDiv.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Unable to Generate Analytics</h5>
+                    <p class="text-muted">Failed to analyze keyword data. Please try again.</p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Analyze keyword data and generate analytics
+     */
+    async analyzeKeywordData() {
+        const keywordStats = new Map();
+        const categoryStats = new Map();
+        const performanceData = [];
+        let totalKeywords = 0;
+        let videosWithKeywords = 0;
+
+        // Process each video's keywords
+        const videos = this.dataManager.videos || [];
+        for (const video of videos) {
+            const videoKeywords = this.getVideoKeywords(video.video_id);
+            if (videoKeywords && videoKeywords.length > 0) {
+                videosWithKeywords++;
+                totalKeywords += videoKeywords.length;
+
+                // Analyze each keyword
+                for (const keyword of videoKeywords) {
+                    const cleanKeyword = keyword.toLowerCase().trim();
+                    
+                    // Filter out "medical medium" as it's the channel name
+                    if (cleanKeyword === 'medical medium') {
+                        continue;
+                    }
+                    
+                    if (!keywordStats.has(cleanKeyword)) {
+                        keywordStats.set(cleanKeyword, {
+                            name: keyword,
+                            count: 0,
+                            totalViews: 0,
+                            totalComments: 0,
+                            videos: []
+                        });
+                    }
+
+                    const stats = keywordStats.get(cleanKeyword);
+                    stats.count++;
+                    stats.totalViews += parseInt(video.view_count) || 0;
+                    stats.totalComments += parseInt(video.comment_count) || 0;
+                    stats.videos.push(video);
+
+                    // Categorize keywords
+                    const category = this.categorizeKeyword(keyword);
+                    if (!categoryStats.has(category)) {
+                        categoryStats.set(category, { count: 0, keywords: new Set() });
+                    }
+                    categoryStats.get(category).count++;
+                    categoryStats.get(category).keywords.add(cleanKeyword);
+                }
+            }
+        }
+
+        // Calculate performance metrics
+        for (const [keyword, stats] of keywordStats) {
+            performanceData.push({
+                keyword: keyword,
+                name: stats.name,
+                count: stats.count,
+                avgViews: Math.round(stats.totalViews / stats.count),
+                avgComments: Math.round(stats.totalComments / stats.count),
+                totalViews: stats.totalViews,
+                totalComments: stats.totalComments,
+                videos: stats.videos
+            });
+        }
+
+        // Sort by frequency and performance
+        const topByFrequency = [...performanceData].sort((a, b) => b.count - a.count);
+        const topByPerformance = [...performanceData].sort((a, b) => b.avgViews - a.avgViews);
+
+        return {
+            summary: {
+                totalUniqueKeywords: keywordStats.size,
+                videosWithKeywords: videosWithKeywords,
+                avgKeywordsPerVideo: videosWithKeywords > 0 ? Math.round(totalKeywords / videosWithKeywords * 10) / 10 : 0,
+                topKeywordFreq: topByFrequency.length > 0 ? topByFrequency[0].count : 0
+            },
+            topByFrequency: topByFrequency.slice(0, 50),
+            topByPerformance: topByPerformance.slice(0, 20),
+            categories: Array.from(categoryStats.entries()).map(([name, data]) => ({
+                name,
+                count: data.count,
+                uniqueKeywords: data.keywords.size
+            })),
+            insights: this.generateKeywordInsights(performanceData, categoryStats)
+        };
+    }
+
+    /**
+     * Categorize a keyword into health/topic categories
+     */
+    categorizeKeyword(keyword) {
+        const k = keyword.toLowerCase();
+        
+        if (k.includes('virus') || k.includes('bacteria') || k.includes('infection') || k.includes('pathogen')) {
+            return 'Pathogens & Infections';
+        } else if (k.includes('liver') || k.includes('kidney') || k.includes('brain') || k.includes('heart') || k.includes('thyroid')) {
+            return 'Organs & Body Systems';
+        } else if (k.includes('anxiety') || k.includes('depression') || k.includes('mood') || k.includes('emotional')) {
+            return 'Mental & Emotional Health';
+        } else if (k.includes('diet') || k.includes('nutrition') || k.includes('food') || k.includes('eating')) {
+            return 'Diet & Nutrition';
+        } else if (k.includes('supplement') || k.includes('vitamin') || k.includes('mineral') || k.includes('herb')) {
+            return 'Supplements & Herbs';
+        } else if (k.includes('detox') || k.includes('cleanse') || k.includes('healing') || k.includes('recovery')) {
+            return 'Healing & Detox';
+        } else if (k.includes('symptom') || k.includes('pain') || k.includes('fatigue') || k.includes('chronic illness')) {
+            return 'Symptoms & Conditions';
+        } else if (k.includes('spiritual') || k.includes('meditation') || k.includes('soul') || k.includes('angel')) {
+            return 'Spiritual & Mindfulness';
+        } else {
+            return 'General Health';
+        }
+    }
+
+    /**
+     * Generate insights based on keyword analysis
+     */
+    generateKeywordInsights(performanceData, categoryStats) {
+        const insights = [];
+
+        // Most engaging keyword
+        const topPerformer = performanceData.sort((a, b) => b.avgViews - a.avgViews)[0];
+        if (topPerformer) {
+            insights.push({
+                title: "Top Performing Keyword",
+                text: `"${topPerformer.name}" generates the highest average views (${topPerformer.avgViews.toLocaleString()}) across ${topPerformer.count} videos.`
+            });
+        }
+
+        // Most popular category
+        const topCategory = Array.from(categoryStats.entries()).sort((a, b) => b[1].count - a[1].count)[0];
+        if (topCategory) {
+            insights.push({
+                title: "Most Popular Category",
+                text: `${topCategory[0]} is the most discussed topic with ${topCategory[1].count} keyword mentions across ${topCategory[1].uniqueKeywords} unique terms.`
+            });
+        }
+
+        // Frequency insights
+        const highFreqKeywords = performanceData.filter(k => k.count >= 10);
+        if (highFreqKeywords.length > 0) {
+            insights.push({
+                title: "Consistent Themes",
+                text: `${highFreqKeywords.length} keywords appear in 10+ videos, indicating core topics that resonate with the audience.`
+            });
+        }
+
+        return insights;
+    }
+
+    /**
+     * Populate the keyword analytics modal with data
+     */
+    populateKeywordAnalytics(data) {
+        // Summary statistics
+        document.getElementById('totalUniqueKeywords').textContent = data.summary.totalUniqueKeywords;
+        document.getElementById('videosWithKeywords').textContent = data.summary.videosWithKeywords;
+        document.getElementById('avgKeywordsPerVideo').textContent = data.summary.avgKeywordsPerVideo;
+        document.getElementById('topKeywordFreq').textContent = data.summary.topKeywordFreq;
+
+        // Word cloud
+        this.generateWordCloud(data.topByFrequency);
+
+        // Top keywords list
+        this.populateKeywordList('topKeywordsList', data.topByFrequency.slice(0, 40), 'frequency');
+
+        // Performance keywords list
+        this.populateKeywordList('performingKeywordsList', data.topByPerformance.slice(0, 40), 'performance');
+
+        // Categories
+        this.populateCategories(data.categories);
+
+        // Insights
+        this.populateInsights(data.insights);
+    }
+
+    /**
+     * Generate word cloud visualization
+     */
+    generateWordCloud(keywords) {
+        const container = document.getElementById('keywordWordCloud');
+        container.innerHTML = '';
+
+        // Get top 30 keywords for word cloud
+        const cloudKeywords = keywords.slice(0, 30);
+        const maxCount = cloudKeywords[0]?.count || 1;
+
+        cloudKeywords.forEach(item => {
+            const size = this.getWordCloudSize(item.count, maxCount);
+            const element = document.createElement('span');
+            element.className = `keyword-cloud-item size-${size}`;
+            element.textContent = item.name;
+            element.onclick = () => this.filterByKeyword(item.keyword);
+            container.appendChild(element);
+        });
+    }
+
+    /**
+     * Get word cloud size class based on frequency
+     */
+    getWordCloudSize(count, maxCount) {
+        const ratio = count / maxCount;
+        if (ratio >= 0.8) return 'xl';
+        if (ratio >= 0.6) return 'lg';
+        if (ratio >= 0.4) return 'md';
+        if (ratio >= 0.2) return 'sm';
+        return 'xs';
+    }
+
+    /**
+     * Populate keyword list
+     */
+    populateKeywordList(containerId, keywords, type) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+
+        keywords.forEach((item, index) => {
+            const listItem = document.createElement('div');
+            listItem.className = 'keyword-item';
+            listItem.onclick = () => this.filterByKeyword(item.keyword);
+
+            const metric = type === 'frequency' ? 
+                `${item.count} videos` : 
+                `${item.avgViews.toLocaleString()} avg views`;
+
+            listItem.innerHTML = `
+                <div class="keyword-name">${index + 1}. ${item.name}</div>
+                <div class="keyword-stats">
+                    <span class="keyword-count">${metric}</span>
+                </div>
+            `;
+            container.appendChild(listItem);
+        });
+    }
+
+    /**
+     * Populate categories grid
+     */
+    populateCategories(categories) {
+        const container = document.getElementById('keywordCategories');
+        container.innerHTML = '';
+
+        const categoryIcons = {
+            'Pathogens & Infections': 'bi-bug',
+            'Organs & Body Systems': 'bi-heart-pulse',
+            'Mental & Emotional Health': 'fas fa-brain',
+            'Diet & Nutrition': 'bi-egg-fried',
+            'Supplements & Herbs': 'bi-capsule',
+            'Healing & Detox': 'bi-arrow-repeat',
+            'Symptoms & Conditions': 'bi-thermometer-half',
+            'Spiritual & Mindfulness': 'bi-peace',
+            'General Health': 'bi-shield-plus'
+        };
+
+        categories.sort((a, b) => b.count - a.count).forEach(category => {
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.onclick = () => this.filterByCategory(category.name);
+
+            const icon = categoryIcons[category.name] || 'bi-tag';
+            const iconClass = icon.startsWith('fas') ? icon : `bi ${icon}`;
+            card.innerHTML = `
+                <div class="category-icon">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="category-name">${category.name}</div>
+                <div class="category-count">${category.count} mentions</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    /**
+     * Populate insights
+     */
+    populateInsights(insights) {
+        const container = document.getElementById('keywordInsights');
+        container.innerHTML = '';
+
+        insights.forEach(insight => {
+            const card = document.createElement('div');
+            card.className = 'insight-card';
+            card.innerHTML = `
+                <div class="insight-title">${insight.title}</div>
+                <div class="insight-text">${insight.text}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    /**
+     * Filter videos by keyword
+     */
+    filterByKeyword(keyword) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('keywordAnalyticsModal'));
+        if (modal) modal.hide();
+
+        // Filter videos that have this keyword
+        const videos = this.dataManager.videos || [];
+        const filteredVideos = videos.filter(video => {
+            const keywords = this.getVideoKeywords(video.video_id);
+            return keywords && keywords.some(k => k.toLowerCase().includes(keyword.toLowerCase()));
+        });
+
+        // Update search input to show the filter
+        const searchInput = this.elements.searchInput;
+        if (searchInput) {
+            searchInput.value = `keyword:"${keyword}"`;
+        }
+
+        // Apply filter
+        this.currentFilteredVideos = filteredVideos;
+        this.renderVideoGrid(filteredVideos);
+        
+        // Update channel stats
+        this.updateChannelStats();
+    }
+
+    /**
+     * Filter videos by category (placeholder for future enhancement)
+     */
+    filterByCategory(categoryName) {
+        console.log(`Filtering by category: ${categoryName}`);
+        // Could implement category-based filtering in the future
     }
 
 }

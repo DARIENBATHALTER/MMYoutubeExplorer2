@@ -458,6 +458,10 @@ class DataManager {
                     return b.comment_count - a.comment_count;
                 case 'comments-asc':
                     return a.comment_count - b.comment_count;
+                case 'title-asc':
+                    return a.title.localeCompare(b.title);
+                case 'title-desc':
+                    return b.title.localeCompare(a.title);
                 default:
                     return b.published_at - a.published_at;
             }

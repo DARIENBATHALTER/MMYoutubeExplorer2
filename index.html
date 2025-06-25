@@ -103,7 +103,7 @@
         <div class="directory-modal-content">
             <div class="directory-modal-header">
                 <div class="welcome-logo">
-                    <i class="fas fa-globe text-warning" style="font-size: 4rem;"></i>
+                    <i class="bi bi-play-circle-fill text-warning" style="font-size: 4rem;"></i>
                 </div>
                 <h3 class="mt-3 mb-2">Medical Medium YouTube Archive Explorer</h3>
                 <p class="text-muted">Select a video source to begin:</p>
@@ -218,9 +218,25 @@
                 <button type="button" id="commentAnalyticsBtn" class="btn btn-danger me-2">
                 <i class="bi bi-graph-up"></i> Comment Analytics
             </button>
-                <button type="button" id="exportAllVideos" class="btn btn-secondary">
-                <i class="bi bi-download"></i> Export All Video Comments
-            </button>
+                <button type="button" id="keywordAnalyticsBtn" class="btn btn-danger me-2">
+                    <i class="bi bi-tags"></i> Keyword Analytics
+                </button>
+                <button type="button" id="listViewToggle" class="btn btn-secondary me-2" title="Toggle List View">
+                    <i class="bi bi-list-ul"></i> List View
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="exportAllVideosDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> Export All Video Comments
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="exportAllVideosDropdown">
+                        <li><a class="dropdown-item" href="#" onclick="window.app.exportAllVideos('comment')">
+                            <i class="bi bi-chat-text"></i> Comment Only
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="window.app.exportAllVideos('thumbnail')">
+                            <i class="bi bi-image"></i> iPhone Screenshot
+                        </a></li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -298,6 +314,64 @@
             </nav>
         </div>
 
+        <!-- Video List View -->
+        <div id="videoListView" class="view-container" style="display: none;">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="sortable" data-sort="thumbnail" style="width: 120px;">
+                                <span class="d-flex align-items-center">
+                                    Thumbnail
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                            <th scope="col" class="sortable" data-sort="title">
+                                <span class="d-flex align-items-center">
+                                    Title
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                            <th scope="col" class="sortable" data-sort="date" style="width: 140px;">
+                                <span class="d-flex align-items-center">
+                                    Upload Date
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                            <th scope="col" class="sortable" data-sort="views" style="width: 100px;">
+                                <span class="d-flex align-items-center">
+                                    Views
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                            <th scope="col" class="sortable" data-sort="likes" style="width: 100px;">
+                                <span class="d-flex align-items-center">
+                                    Likes
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                            <th scope="col" class="sortable" data-sort="comments" style="width: 100px;">
+                                <span class="d-flex align-items-center">
+                                    Comments
+                                    <i class="bi bi-chevron-expand ms-1"></i>
+                                </span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="videoListBody">
+                        <!-- Videos will be dynamically loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <nav aria-label="Video pagination" class="mt-4">
+                <ul id="videoListPagination" class="pagination justify-content-center">
+                    <!-- Pagination will be generated here -->
+                </ul>
+            </nav>
+        </div>
+
         <!-- Video Detail View -->
         <div id="videoDetailView" class="view-container" style="display: none;">
             <div class="row">
@@ -357,9 +431,19 @@
                     <div class="comments-section">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4>Comments</h4>
-                            <button type="button" id="exportVideoComments" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-download"></i> Export All
-                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="exportVideoCommentsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-download"></i> Export All
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="exportVideoCommentsDropdown">
+                                    <li><a class="dropdown-item" href="#" onclick="window.app.exportVideoComments('comment')">
+                                        <i class="bi bi-chat-text"></i> Comment Only
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="window.app.exportVideoComments('thumbnail')">
+                                        <i class="bi bi-image"></i> iPhone Screenshot
+                                    </a></li>
+                                </ul>
+                            </div>
                         </div>
                         
                         <!-- Comment Filters -->
@@ -447,14 +531,63 @@
                         </div>
                     </div>
 
-                    <!-- Video Description -->
-                    <div class="video-description-sidebar mb-4">
-                        <button class="btn btn-outline-secondary btn-sm mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionCollapse" aria-expanded="true" aria-controls="descriptionCollapse">
-                            <i class="bi bi-chevron-down"></i> Description
-                        </button>
-                        <div class="collapse show" id="descriptionCollapse">
-                            <div class="card card-body">
-                                <p id="videoDescription">Video description...</p>
+                    <!-- Video Content Insights -->
+                    <div id="videoContentInsights" class="video-content-insights mb-4">
+                        <h5 class="mb-3">Video Content</h5>
+                        <div class="content-tabs mb-3">
+                            <button class="btn btn-sm btn-outline-secondary active content-tab" data-tab="description">
+                                Description
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary content-tab" data-tab="transcript">
+                                Transcript
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary content-tab" data-tab="summary">
+                                Summary
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary content-tab" data-tab="keywords">
+                                Keywords
+                            </button>
+                        </div>
+                        
+                        <div class="content-body">
+                            <div id="descriptionTab" class="content-tab-pane active">
+                                <div class="tab-header">
+                                    <h6>Video Description</h6>
+                                    <small class="text-muted">Original video description</small>
+                                </div>
+                                <div id="videoDescription" class="video-description-content">
+                                    Video description...
+                                </div>
+                            </div>
+                            
+                            <div id="transcriptTab" class="content-tab-pane" style="display: none;">
+                                <div class="tab-header">
+                                    <h6>Video Transcript</h6>
+                                    <small class="text-muted">Auto-generated subtitles</small>
+                                </div>
+                                <div id="videoTranscript" class="video-transcript-content">
+                                    <div class="text-muted">Loading transcript...</div>
+                                </div>
+                            </div>
+                            
+                            <div id="summaryTab" class="content-tab-pane" style="display: none;">
+                                <div class="tab-header">
+                                    <h6>Video Summary</h6>
+                                    <small class="text-muted">3-sentence overview</small>
+                                </div>
+                                <div id="videoSummary" class="video-summary-content">
+                                    <div class="text-muted">Loading summary...</div>
+                                </div>
+                            </div>
+                            
+                            <div id="keywordsTab" class="content-tab-pane" style="display: none;">
+                                <div class="tab-header">
+                                    <h6>Video Keywords</h6>
+                                    <small class="text-muted">Key topics from transcript analysis</small>
+                                </div>
+                                <div id="videoKeywords" class="video-keywords-content">
+                                    <div class="text-muted">Loading keywords...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -526,7 +659,21 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Analytics Tiles -->
+                    <!-- Loading State -->
+                    <div id="commentAnalyticsLoading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-danger mb-3" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5>Analyzing Comments...</h5>
+                        <p class="text-muted">Processing sentiment, themes, and engagement metrics</p>
+                        <div class="progress mt-3" style="width: 300px; margin: 0 auto;">
+                            <div id="commentAnalyticsProgress" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Content -->
+                    <div id="commentAnalyticsContent">
+                        <!-- Analytics Tiles -->
                     <div class="analytics-tiles mb-4">
                         <div class="row g-3">
                             <div class="col-md-3 col-sm-6">
@@ -603,6 +750,52 @@
                         </div>
                     </div>
 
+                    <!-- Sentiment & Theme Analytics -->
+                    <div class="sentiment-theme-section mb-4">
+                        <!-- Sentiment Analysis Collapsible -->
+                        <div class="analytics-section mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="section-title mb-0">
+                                    <i class="bi bi-emoji-smile"></i> Comment Sentiment Analysis
+                                </h6>
+                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#sentimentCollapse" aria-expanded="false">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div class="collapse" id="sentimentCollapse">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div id="sentimentChart" class="sentiment-chart">
+                                            <!-- Sentiment chart will be populated here -->
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div id="sentimentBreakdown" class="sentiment-breakdown">
+                                            <!-- Sentiment breakdown will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Theme Analysis Collapsible -->
+                        <div class="analytics-section">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="section-title mb-0">
+                                    <i class="bi bi-tags"></i> Theme Analysis
+                                </h6>
+                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#themeCollapse" aria-expanded="false">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </div>
+                            <div class="collapse" id="themeCollapse">
+                                <div id="topThemes" class="top-themes">
+                                    <!-- Top themes will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- All Comments Section -->
                     <div class="all-comments-section">
                         <div class="mb-3">
@@ -643,6 +836,141 @@
                             <button type="button" id="loadMoreChannelComments" class="btn btn-outline-secondary btn-sm" style="display: none;">
                                 Load More Comments
                             </button>
+                        </div>
+                    </div>
+                    </div> <!-- End commentAnalyticsContent -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyword Analytics Modal -->
+    <div class="modal fade" id="keywordAnalyticsModal" tabindex="-1" aria-labelledby="keywordAnalyticsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="keywordAnalyticsModalLabel">
+                        <i class="bi bi-tags"></i> Keyword Analytics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Loading State -->
+                    <div id="keywordAnalyticsLoading" class="text-center py-5">
+                        <div class="spinner-border text-danger mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted">Analyzing keyword data...</p>
+                    </div>
+
+                    <!-- Analytics Content -->
+                    <div id="keywordAnalyticsContent" style="display: none;">
+                        <!-- Top Keywords and Performance -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-list-ol"></i> Most Popular Keywords
+                                    </h6>
+                                    <div id="topKeywordsList" class="keyword-list">
+                                        <!-- Top keywords list will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-graph-up"></i> Best Performing Keywords
+                                        <small class="text-muted">By avg views/video</small>
+                                    </h6>
+                                    <div id="performingKeywordsList" class="keyword-list">
+                                        <!-- Performance keywords will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Keyword Categories -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-collection"></i> Keyword Categories
+                                    </h6>
+                                    <div id="keywordCategories" class="categories-grid">
+                                        <!-- Categories will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Insights -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-lightbulb"></i> Performance Insights
+                                    </h6>
+                                    <div id="keywordInsights" class="insights-container">
+                                        <!-- Insights will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Word Cloud Section -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="analytics-section">
+                                    <h6 class="section-title">
+                                        <i class="bi bi-cloud"></i> Keyword Word Cloud
+                                        <small class="text-muted">Click keywords to filter videos</small>
+                                    </h6>
+                                    <div id="keywordWordCloud" class="word-cloud-container">
+                                        <!-- Word cloud will be generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Stats -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="analytics-card text-center">
+                                    <div class="analytics-icon">
+                                        <i class="bi bi-tags-fill text-danger"></i>
+                                    </div>
+                                    <div class="analytics-number" id="totalUniqueKeywords">0</div>
+                                    <div class="analytics-label">Unique Keywords</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="analytics-card text-center">
+                                    <div class="analytics-icon">
+                                        <i class="bi bi-play-circle-fill text-danger"></i>
+                                    </div>
+                                    <div class="analytics-number" id="videosWithKeywords">0</div>
+                                    <div class="analytics-label">Tagged Videos</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="analytics-card text-center">
+                                    <div class="analytics-icon">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                    <div class="analytics-number" id="avgKeywordsPerVideo">0</div>
+                                    <div class="analytics-label">Avg Keywords/Video</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="analytics-card text-center">
+                                    <div class="analytics-icon">
+                                        <i class="bi bi-trophy-fill text-warning"></i>
+                                    </div>
+                                    <div class="analytics-number" id="topKeywordFreq">0</div>
+                                    <div class="analytics-label">Most Used Frequency</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
