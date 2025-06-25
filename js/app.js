@@ -876,6 +876,30 @@ class ArchiveExplorer {
                 });
             }
             
+            // List view sorting event handlers
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('#videoListView .sortable') || e.target.closest('#videoListView .sortable')) {
+                    e.preventDefault();
+                    
+                    const header = e.target.closest('.sortable');
+                    const sortField = header.dataset.sort;
+                    
+                    // Toggle direction if same field, otherwise default to desc
+                    if (this.listViewSort.field === sortField) {
+                        this.listViewSort.direction = this.listViewSort.direction === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        this.listViewSort.field = sortField;
+                        this.listViewSort.direction = 'desc';
+                    }
+                    
+                    // Update visual indicators
+                    this.updateSortIndicators();
+                    
+                    // Reload data with new sort
+                    this.loadVideoGrid();
+                }
+            });
+            
             console.log('✅ Event listeners set up successfully');
             
         } catch (error) {
@@ -1223,7 +1247,6 @@ class ArchiveExplorer {
         if (this.isListView) {
             this.elements.videoGridView.style.display = 'none';
             this.elements.videoListView.style.display = 'block';
-            this.setupListViewSorting();
         } else {
             this.elements.videoListView.style.display = 'none';
             this.elements.videoGridView.style.display = 'block';
@@ -1233,31 +1256,6 @@ class ArchiveExplorer {
         this.loadVideoGrid();
     }
 
-    /**
-     * Setup list view column sorting
-     */
-    setupListViewSorting() {
-        const sortableHeaders = this.elements.videoListView.querySelectorAll('.sortable');
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const sortField = header.dataset.sort;
-                
-                // Toggle direction if same field, otherwise default to desc
-                if (this.listViewSort.field === sortField) {
-                    this.listViewSort.direction = this.listViewSort.direction === 'desc' ? 'asc' : 'desc';
-                } else {
-                    this.listViewSort.field = sortField;
-                    this.listViewSort.direction = 'desc';
-                }
-                
-                // Update visual indicators
-                this.updateSortIndicators();
-                
-                // Reload data with new sort
-                this.loadVideoGrid();
-            });
-        });
-    }
 
     /**
      * Update visual sort indicators
@@ -3228,16 +3226,30 @@ class ArchiveExplorer {
         // Sort by frequency and performance
         const topByFrequency = [...performanceData].sort((a, b) => b.count - a.count);
         const topByPerformance = [...performanceData].sort((a, b) => b.avgViews - a.avgViews);
+        
+        // High-Impact Keywords: Frequent keywords (3+ videos) with high average performance
+        const highImpactKeywords = performanceData
+            .filter(keyword => keyword.count >= 3) // Only keywords appearing in 3+ videos
+            .sort((a, b) => {
+                // Primary sort: average views
+                const viewsDiff = b.avgViews - a.avgViews;
+                if (Math.abs(viewsDiff) > 1000) return viewsDiff;
+                
+                // Secondary sort: frequency (for ties)
+                return b.count - a.count;
+            });
 
         return {
             summary: {
                 totalUniqueKeywords: keywordStats.size,
                 videosWithKeywords: videosWithKeywords,
                 avgKeywordsPerVideo: videosWithKeywords > 0 ? Math.round(totalKeywords / videosWithKeywords * 10) / 10 : 0,
-                topKeywordFreq: topByFrequency.length > 0 ? topByFrequency[0].count : 0
+                topKeywordFreq: topByFrequency.length > 0 ? topByFrequency[0].count : 0,
+                highImpactCount: highImpactKeywords.length
             },
-            topByFrequency: topByFrequency.slice(0, 50),
-            topByPerformance: topByPerformance.slice(0, 20),
+            topByFrequency: topByFrequency.slice(0, 40),
+            topByPerformance: topByPerformance.slice(0, 40),
+            highImpactKeywords: highImpactKeywords.slice(0, 40),
             categories: Array.from(categoryStats.entries()).map(([name, data]) => ({
                 name,
                 count: data.count,
@@ -3329,6 +3341,9 @@ class ArchiveExplorer {
         // Performance keywords list
         this.populateKeywordList('performingKeywordsList', data.topByPerformance.slice(0, 40), 'performance');
 
+        // High-Impact keywords list
+        this.populateKeywordList('highImpactKeywordsList', data.highImpactKeywords.slice(0, 40), 'impact');
+
         // Categories
         this.populateCategories(data.categories);
 
@@ -3381,9 +3396,14 @@ class ArchiveExplorer {
             listItem.className = 'keyword-item';
             listItem.onclick = () => this.filterByKeyword(item.keyword);
 
-            const metric = type === 'frequency' ? 
-                `${item.count} videos` : 
-                `${item.avgViews.toLocaleString()} avg views`;
+            let metric;
+            if (type === 'frequency') {
+                metric = `${item.count} videos`;
+            } else if (type === 'performance') {
+                metric = `${item.avgViews.toLocaleString()} avg views`;
+            } else if (type === 'impact') {
+                metric = `${item.count} videos • ${item.avgViews.toLocaleString()} avg views`;
+            }
 
             listItem.innerHTML = `
                 <div class="keyword-name">${index + 1}. ${item.name}</div>

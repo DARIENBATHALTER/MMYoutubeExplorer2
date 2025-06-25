@@ -2404,7 +2404,7 @@ body.drawer-open #app {
     margin-bottom: 0;
 }
 
-#videoListView .table th {
+#videoListView .table thead th {
     background: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
     font-weight: 600;
@@ -2414,9 +2414,6 @@ body.drawer-open #app {
     cursor: pointer;
     user-select: none;
     transition: all 0.2s ease;
-    position: sticky;
-    top: 75px; /* Height of titlebar */
-    z-index: 10;
 }
 
 #videoListView .table th:hover {
