@@ -732,10 +732,10 @@ class ExportService {
         ctx.textBaseline = 'alphabetic';
         
         let currentY = yPosition + cardPadding + 22;
-        ctx.fillText(`@${authorName}`, textStartX, currentY);
+        ctx.fillText(authorName, textStartX, currentY);
         
         // Draw date
-        const authorWidth = ctx.measureText(`@${authorName}`).width;
+        const authorWidth = ctx.measureText(authorName).width;
         ctx.fillStyle = metaColor;
         ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif'; // Increased from 14px
         ctx.fillText(formattedDate, textStartX + authorWidth + 10, currentY);

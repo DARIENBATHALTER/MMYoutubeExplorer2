@@ -310,7 +310,7 @@ function generateCommentWithThumbnailHTML(comment, videoTitle = '', videoThumbna
                     <div class="comment-avatar">${firstLetter}</div>
                     <div class="comment-body">
                         <div class="comment-meta">
-                            <span class="comment-author">@${authorName}</span>
+                            <span class="comment-author">${authorName}</span>
                             <span class="comment-time">${formattedDate}</span>
                         </div>
                         <div class="comment-text">${commentText}</div>
