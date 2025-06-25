@@ -36,5 +36,10 @@ __pycache__/
 *$py.class
 
 # Exclude any local server logs
-server.log data/comments.json
-data/*index.json
+server.log 
+
+# Keep videos.json and video-mapping.json (smaller files)
+data/comments.json
+data/search_index.json  
+data/video_comments_index.json
+data/word_freq_index.json
