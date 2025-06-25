@@ -3948,11 +3948,11 @@ class ArchiveExplorer {
                                 Title 
                                 <i class="bi bi-chevron-expand sort-icon"></i>
                             </th>
-                            <th style="width: 140px;" class="sortable" data-sort="date">
+                            <th style="width: 160px;" class="sortable" data-sort="date">
                                 Upload Date 
                                 <i class="bi bi-chevron-expand sort-icon"></i>
                             </th>
-                            <th style="width: 100px;" class="sortable" data-sort="views">
+                            <th style="width: 120px;" class="sortable" data-sort="views">
                                 Views 
                                 <i class="bi bi-chevron-expand sort-icon"></i>
                             </th>
