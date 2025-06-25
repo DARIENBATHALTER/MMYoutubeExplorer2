@@ -3491,20 +3491,56 @@ class ArchiveExplorer {
             searchInput.value = `keyword:"${keyword}"`;
         }
 
-        // Apply filter
+        // Apply filter and render appropriate view
         this.currentFilteredVideos = filteredVideos;
-        this.renderVideoGrid(filteredVideos);
+        
+        // Render appropriate view
+        if (this.isListView) {
+            this.renderVideoList(filteredVideos);
+        } else {
+            this.renderVideoGrid(filteredVideos);
+        }
         
         // Update channel stats
         this.updateChannelStats();
     }
 
     /**
-     * Filter videos by category (placeholder for future enhancement)
+     * Filter videos by category
      */
     filterByCategory(categoryName) {
-        console.log(`Filtering by category: ${categoryName}`);
-        // Could implement category-based filtering in the future
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('keywordAnalyticsModal'));
+        if (modal) modal.hide();
+
+        // Filter videos that have keywords in this category
+        const videos = this.dataManager.videos || [];
+        const filteredVideos = videos.filter(video => {
+            const keywords = this.getVideoKeywords(video.video_id);
+            if (!keywords || keywords.length === 0) return false;
+            
+            // Check if any of the video's keywords belong to the selected category
+            return keywords.some(keyword => this.categorizeKeyword(keyword) === categoryName);
+        });
+
+        // Update search input to show the filter
+        const searchInput = this.elements.searchInput;
+        if (searchInput) {
+            searchInput.value = `category:"${categoryName}"`;
+        }
+
+        // Apply filter and render appropriate view
+        this.currentFilteredVideos = filteredVideos;
+        
+        // Render appropriate view
+        if (this.isListView) {
+            this.renderVideoList(filteredVideos);
+        } else {
+            this.renderVideoGrid(filteredVideos);
+        }
+        
+        // Update channel stats
+        this.updateChannelStats();
     }
 
 }
