@@ -776,11 +776,37 @@ class ArchiveExplorer {
                 });
             }
 
-            // List View Toggle button
+            // List View Toggle switch
             const listViewToggle = document.getElementById('listViewToggle');
             if (listViewToggle) {
-                listViewToggle.addEventListener('click', () => {
+                listViewToggle.addEventListener('change', () => {
                     this.toggleListView();
+                });
+            }
+
+            // Search Transcripts button
+            const searchTranscriptsBtn = document.getElementById('searchTranscriptsBtn');
+            if (searchTranscriptsBtn) {
+                searchTranscriptsBtn.addEventListener('click', () => {
+                    this.showSearchTranscriptsModal();
+                });
+            }
+
+            // Transcript search functionality
+            const performTranscriptSearch = document.getElementById('performTranscriptSearch');
+            const transcriptSearchInput = document.getElementById('transcriptSearchInput');
+            
+            if (performTranscriptSearch) {
+                performTranscriptSearch.addEventListener('click', () => {
+                    this.performTranscriptSearch();
+                });
+            }
+            
+            if (transcriptSearchInput) {
+                transcriptSearchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.performTranscriptSearch();
+                    }
                 });
             }
 
@@ -1286,18 +1312,14 @@ class ArchiveExplorer {
      * Toggle between grid and list view
      */
     toggleListView() {
-        this.isListView = !this.isListView;
+        const toggleCheckbox = document.getElementById('listViewToggle');
+        this.isListView = toggleCheckbox ? toggleCheckbox.checked : !this.isListView;
         
-        // Update button text and icon
-        const toggleBtn = document.getElementById('listViewToggle');
-        if (toggleBtn) {
-            if (this.isListView) {
-                toggleBtn.innerHTML = '<i class="bi bi-grid-3x3-gap"></i> Grid View';
-                toggleBtn.title = 'Toggle Grid View';
-            } else {
-                toggleBtn.innerHTML = '<i class="bi bi-list-ul"></i> List View';
-                toggleBtn.title = 'Toggle List View';
-            }
+        // Update toggle labels
+        const labels = document.querySelectorAll('.view-toggle-label');
+        if (labels.length >= 2) {
+            labels[0].classList.toggle('active', !this.isListView); // Grid icon
+            labels[1].classList.toggle('active', this.isListView);   // List icon
         }
         
         // Show/hide appropriate view
@@ -3610,6 +3632,400 @@ class ArchiveExplorer {
         
         // Update channel stats
         this.updateChannelStats();
+    }
+
+    /**
+     * Show Search Transcripts Modal
+     */
+    showSearchTranscriptsModal() {
+        const modal = new bootstrap.Modal(document.getElementById('searchTranscriptsModal'));
+        modal.show();
+        
+        // Focus on search input when modal opens
+        setTimeout(() => {
+            const searchInput = document.getElementById('transcriptSearchInput');
+            if (searchInput) searchInput.focus();
+        }, 300);
+    }
+
+    /**
+     * Perform transcript search
+     */
+    async performTranscriptSearch() {
+        const searchInput = document.getElementById('transcriptSearchInput');
+        const searchTerm = searchInput.value.trim();
+        
+        if (!searchTerm) {
+            this.showError('Please enter a search term');
+            return;
+        }
+
+        if (searchTerm.length < 2) {
+            this.showError('Search term must be at least 2 characters long');
+            return;
+        }
+
+        const loadingDiv = document.getElementById('transcriptSearchLoading');
+        const resultsDiv = document.getElementById('transcriptSearchResults');
+        
+        // Show loading state
+        loadingDiv.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        try {
+            const startTime = Date.now();
+            this.showLoadingToast('Searching transcripts...');
+            
+            // Get all videos directly from data manager (not paginated)
+            const videos = this.dataManager.videos;
+            
+            if (!videos || !Array.isArray(videos)) {
+                throw new Error('Videos not loaded. Please wait for the app to finish loading.');
+            }
+            
+            const searchResults = [];
+            
+            // Search through each video's transcript
+            let transcriptsFound = 0;
+            let videosProcessed = 0;
+            
+            for (const video of videos) {
+                videosProcessed++;
+                let foundTranscript = false;
+                
+                try {
+                    const transcriptFiles = this.generateFilePatterns(video, 'data/subtitles', '', 'txt');
+                    
+                    for (const file of transcriptFiles) {
+                        try {
+                            const response = await fetch(file, { method: 'HEAD' }); // Use HEAD to check existence
+                            if (response.ok) {
+                                // File exists, now fetch content
+                                const contentResponse = await fetch(file);
+                                if (contentResponse.ok) {
+                                    const content = await contentResponse.text();
+                                    const excerpts = this.findTextExcerpts(content, searchTerm);
+                                    
+                                    if (excerpts.length > 0) {
+                                        searchResults.push({
+                                            video: video,
+                                            excerpts: excerpts,
+                                            totalMatches: excerpts.length
+                                        });
+                                    }
+                                    foundTranscript = true;
+                                    transcriptsFound++;
+                                    break; // Found transcript for this video
+                                }
+                            }
+                        } catch (error) {
+                            // Silently continue to next file pattern
+                        }
+                    }
+                } catch (error) {
+                    // Silently continue to next video
+                }
+                
+                // Update progress occasionally
+                if (videosProcessed % 50 === 0) {
+                    console.log(`Searched ${videosProcessed}/${videos.length} videos, found ${transcriptsFound} transcripts`);
+                }
+            }
+            
+            const endTime = Date.now();
+            const searchTime = ((endTime - startTime) / 1000).toFixed(2);
+            
+            // Hide loading state
+            loadingDiv.style.display = 'none';
+            
+            // Show success toast
+            const totalMatches = searchResults.reduce((sum, result) => sum + result.totalMatches, 0);
+            this.showSuccessToast(`Found ${totalMatches} matches in ${searchResults.length} videos (${searchTime}s)`);
+            
+            // Render results
+            this.renderTranscriptSearchResults(searchResults, searchTerm, searchTime);
+            
+        } catch (error) {
+            console.error('Transcript search error:', error);
+            loadingDiv.style.display = 'none';
+            this.showError('Failed to search transcripts. Please try again.');
+        }
+    }
+
+    /**
+     * Find text excerpts containing search term
+     */
+    findTextExcerpts(content, searchTerm, contextLength = 200) {
+        const excerpts = [];
+        const lowerContent = content.toLowerCase();
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        
+        let searchIndex = 0;
+        while (true) {
+            const index = lowerContent.indexOf(lowerSearchTerm, searchIndex);
+            if (index === -1) break;
+            
+            // Calculate excerpt bounds
+            const start = Math.max(0, index - contextLength);
+            const end = Math.min(content.length, index + searchTerm.length + contextLength);
+            
+            // Extract excerpt
+            let excerpt = content.substring(start, end);
+            
+            // Clean up excerpt boundaries (try to end on word boundaries)
+            if (start > 0) {
+                const firstSpace = excerpt.indexOf(' ');
+                if (firstSpace > 0 && firstSpace < 50) {
+                    excerpt = excerpt.substring(firstSpace + 1);
+                }
+            }
+            
+            if (end < content.length) {
+                const lastSpace = excerpt.lastIndexOf(' ');
+                if (lastSpace > excerpt.length - 50 && lastSpace > 0) {
+                    excerpt = excerpt.substring(0, lastSpace);
+                }
+            }
+            
+            excerpts.push({
+                text: excerpt.trim(),
+                position: index
+            });
+            
+            // Move search index forward to avoid overlapping results
+            searchIndex = index + searchTerm.length;
+            
+            // Limit to 3 excerpts per video to keep results manageable
+            if (excerpts.length >= 3) break;
+        }
+        
+        return excerpts;
+    }
+
+    /**
+     * Highlight search terms in text
+     */
+    highlightSearchTerms(text, searchTerm) {
+        const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    /**
+     * Escape special regex characters
+     */
+    escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Render transcript search results
+     */
+    renderTranscriptSearchResults(results, searchTerm, searchTime) {
+        const resultsDiv = document.getElementById('transcriptSearchResults');
+        
+        if (results.length === 0) {
+            resultsDiv.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-search text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
+                    <h6 class="text-muted mt-3">No results found</h6>
+                    <p class="text-muted">No transcripts contain "${searchTerm}". Try a different search term.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const totalMatches = results.reduce((sum, result) => sum + result.totalMatches, 0);
+        
+        const html = `
+            <div class="search-results-table">
+                <div class="table-responsive">
+                    <table class="table" id="searchResultsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">Video</th>
+                            <th style="width: 280px;" class="sortable" data-sort="title">
+                                Title 
+                                <i class="bi bi-chevron-expand sort-icon"></i>
+                            </th>
+                            <th style="width: 140px;" class="sortable" data-sort="date">
+                                Upload Date 
+                                <i class="bi bi-chevron-expand sort-icon"></i>
+                            </th>
+                            <th style="width: 100px;" class="sortable" data-sort="views">
+                                Views 
+                                <i class="bi bi-chevron-expand sort-icon"></i>
+                            </th>
+                            <th class="excerpt-column">Excerpt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="searchResultsTableBody">
+                        ${results.map(result => 
+                            result.excerpts.map(excerpt => `
+                                <tr onclick="window.app.openVideoFromSearch('${result.video.video_id}')" 
+                                    data-video-id="${result.video.video_id}"
+                                    data-title="${this.escapeHTML(result.video.title)}"
+                                    data-date="${result.video.published_at}"
+                                    data-views="${result.video.view_count}">
+                                    <td>
+                                        <img src="${this.getVideoThumbnail(result.video)}" 
+                                             alt="Video thumbnail" 
+                                             class="search-result-thumbnail"
+                                             onerror="this.src='https://img.youtube.com/vi/${result.video.video_id}/mqdefault.jpg'">
+                                    </td>
+                                    <td>
+                                        <a href="#" class="search-result-title" onclick="event.preventDefault(); window.app.openVideoFromSearch('${result.video.video_id}')">
+                                            ${this.escapeHTML(result.video.title)}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="search-result-date">
+                                            ${this.formatDate(result.video.published_at)}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="search-result-views">
+                                            ${this.formatNumber(result.video.view_count)}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="search-result-excerpt">
+                                            "${this.highlightSearchTerms(this.escapeHTML(excerpt.text), searchTerm)}"
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')
+                        ).join('')}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        resultsDiv.innerHTML = html;
+        
+        // Setup table sorting after rendering
+        this.setupSearchResultsSorting();
+    }
+
+    /**
+     * Format date for display
+     */
+    formatDate(dateString) {
+        if (!dateString) return 'Unknown';
+        
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return 'Unknown';
+        }
+    }
+
+    /**
+     * Get video thumbnail URL with fallbacks
+     */
+    getVideoThumbnail(video) {
+        // Try different thumbnail sources in order of preference
+        if (video.thumbnails?.medium?.url) {
+            return video.thumbnails.medium.url;
+        }
+        if (video.thumbnail) {
+            return video.thumbnail;
+        }
+        // Fallback to YouTube thumbnail
+        return `https://img.youtube.com/vi/${video.video_id}/mqdefault.jpg`;
+    }
+
+    /**
+     * Open video from search and close modal
+     */
+    openVideoFromSearch(videoId) {
+        // Close the search modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('searchTranscriptsModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Find the video object from the data
+        const video = this.dataManager.videos.find(v => v.video_id === videoId);
+        if (video) {
+            // Navigate to video
+            this.showVideo(video.video_id);
+        } else {
+            console.error('Video not found:', videoId);
+            this.showError('Video not found');
+        }
+    }
+
+    /**
+     * Setup table sorting for search results
+     */
+    setupSearchResultsSorting() {
+        const sortableHeaders = document.querySelectorAll('#searchResultsTable .sortable');
+        
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortType = header.dataset.sort;
+                const currentDirection = header.dataset.direction || 'asc';
+                const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+                
+                // Update header
+                header.dataset.direction = newDirection;
+                
+                // Update sort icons
+                sortableHeaders.forEach(h => {
+                    const icon = h.querySelector('.sort-icon');
+                    icon.className = 'bi bi-chevron-expand sort-icon';
+                });
+                
+                const icon = header.querySelector('.sort-icon');
+                icon.className = newDirection === 'asc' ? 'bi bi-chevron-up sort-icon' : 'bi bi-chevron-down sort-icon';
+                
+                // Sort the table
+                this.sortSearchResults(sortType, newDirection);
+            });
+        });
+    }
+
+    /**
+     * Sort search results table
+     */
+    sortSearchResults(sortType, direction) {
+        const tbody = document.getElementById('searchResultsTableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (sortType) {
+                case 'title':
+                    aValue = a.dataset.title.toLowerCase();
+                    bValue = b.dataset.title.toLowerCase();
+                    break;
+                case 'date':
+                    aValue = new Date(a.dataset.date);
+                    bValue = new Date(b.dataset.date);
+                    break;
+                case 'views':
+                    aValue = parseInt(a.dataset.views) || 0;
+                    bValue = parseInt(b.dataset.views) || 0;
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+        
+        // Clear tbody and append sorted rows
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
     }
 
 }

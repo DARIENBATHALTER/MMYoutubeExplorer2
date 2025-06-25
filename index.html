@@ -215,14 +215,28 @@
 
         <!-- Stats Bar (Home View Only) -->
             <div id="statsBar" class="stats-bar mb-0">
+                <div class="view-toggle-container me-3">
+                    <div class="view-toggle-wrapper">
+                        <span class="view-toggle-label">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                        </span>
+                        <label class="view-toggle-switch">
+                            <input type="checkbox" id="listViewToggle">
+                            <span class="view-toggle-slider"></span>
+                        </label>
+                        <span class="view-toggle-label">
+                            <i class="bi bi-list-ul"></i>
+                        </span>
+                    </div>
+                </div>
                 <button type="button" id="commentAnalyticsBtn" class="btn btn-danger me-2">
                 <i class="bi bi-graph-up"></i> Comment Analytics
             </button>
                 <button type="button" id="keywordAnalyticsBtn" class="btn btn-danger me-2">
                     <i class="bi bi-tags"></i> Keyword Analytics
                 </button>
-                <button type="button" id="listViewToggle" class="btn btn-secondary me-2" title="Toggle List View">
-                    <i class="bi bi-list-ul"></i> List View
+                <button type="button" id="searchTranscriptsBtn" class="btn btn-danger me-2">
+                    <i class="bi bi-search"></i> Search Transcripts
                 </button>
                 <div class="dropdown">
                     <button class="btn btn-secondary dropdown-toggle" type="button" id="exportAllVideosDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -972,6 +986,63 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Transcripts Modal -->
+    <div class="modal fade" id="searchTranscriptsModal" tabindex="-1" aria-labelledby="searchTranscriptsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="searchTranscriptsModalLabel">
+                        <i class="bi bi-search"></i> Search Transcripts
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Search Input -->
+                    <div class="search-section mb-4">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="search-input-group">
+                                    <i class="bi bi-search search-icon"></i>
+                                    <input type="text" id="transcriptSearchInput" class="form-control search-input" 
+                                           placeholder="Search through all video transcripts..." 
+                                           autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" id="performTranscriptSearch" class="btn btn-danger w-100">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                        <div class="search-tips mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> 
+                                Search across all video transcripts. Results will show context around your search terms.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="transcriptSearchResults" class="search-results">
+                        <div class="search-placeholder text-center py-5">
+                            <i class="bi bi-search search-placeholder-icon"></i>
+                            <h6 class="text-muted mt-3">Enter a search term to find videos</h6>
+                            <p class="text-muted small">Search through transcripts of all 598 videos</p>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="transcriptSearchLoading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Searching...</span>
+                        </div>
+                        <p class="text-muted mt-3">Searching through transcripts...</p>
                     </div>
                 </div>
             </div>
