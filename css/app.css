@@ -1597,10 +1597,11 @@ body.drawer-open #app {
 
 /* Channel Statistics */
 .channel-stats {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: var(--shadow-light);
+    /* Container made invisible - tiles float directly on background */
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
 }
 
 .stat-card {
