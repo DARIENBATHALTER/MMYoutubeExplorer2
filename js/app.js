@@ -1066,10 +1066,23 @@ class ArchiveExplorer {
             // Apply keyword filtering if present
             let finalVideos = result.videos;
             if (this.currentFilters.keyword) {
+                console.log('🔍 Applying keyword filter:', this.currentFilters.keyword);
+                console.log('🔍 Total videos before filtering:', result.videos.length);
+                
                 finalVideos = result.videos.filter(video => {
                     const keywords = this.getVideoKeywords(video.video_id);
-                    return keywords && keywords.some(k => k.toLowerCase().includes(this.currentFilters.keyword.toLowerCase()));
+                    const hasKeyword = keywords && keywords.some(k => k.toLowerCase().includes(this.currentFilters.keyword.toLowerCase()));
+                    
+                    if (keywords) {
+                        console.log(`🔍 Video "${video.title}" keywords:`, keywords.slice(0, 3), `... (${keywords.length} total)`);
+                    } else {
+                        console.log(`🔍 Video "${video.title}" has no keywords`);
+                    }
+                    
+                    return hasKeyword;
                 });
+                
+                console.log('🔍 Videos after keyword filtering:', finalVideos.length);
             }
             
             // Create final result with keyword-filtered videos
@@ -3222,6 +3235,7 @@ class ArchiveExplorer {
     getVideoKeywords(videoId) {
         try {
             if (!this.keywordsCache) {
+                console.log('🔍 No keywords cache available');
                 return null;
             }
 
@@ -3619,6 +3633,8 @@ class ArchiveExplorer {
      * Filter videos by keyword
      */
     filterByKeyword(keyword) {
+        console.log('🔍 filterByKeyword called with:', keyword);
+        
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('keywordAnalyticsModal'));
         if (modal) modal.hide();
@@ -3632,6 +3648,8 @@ class ArchiveExplorer {
         // Store the keyword filter in currentFilters
         this.currentFilters.keyword = keyword;
         this.currentPagination.page = 1; // Reset to first page
+        
+        console.log('🔍 currentFilters after setting keyword:', this.currentFilters);
 
         // Use loadVideoGrid to properly handle the filter with pagination and view switching
         this.loadVideoGrid();
